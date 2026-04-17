@@ -31,10 +31,11 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 #loginScreen{
   position:fixed;inset:0;z-index:9999;
   background:linear-gradient(150deg,#0c1a10 0%,#162a1c 60%,#0c1a10 100%);
-  display:flex;align-items:flex-start;justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   overflow-y:auto;
-  padding:20px 0 40px;
+  padding:20px;
 }
+#loginScreen.hidden{display:none !important;}
 @keyframes slideUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes popIn{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -44,8 +45,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 .login-wrap{
   width:100%;max-width:420px;padding:20px;
   animation:slideUp .45s cubic-bezier(.34,1.4,.64,1);
-  margin:auto 0;
-  align-self:center;
+  flex-shrink:0;
 }
 .login-brand{text-align:center;margin-bottom:16px;}
 .login-brand .wordmark{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:4px;color:#e8f5ee;line-height:1;}
@@ -77,7 +77,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
 /* ═══════════════ STAFF SHELL ═══════════════ */
 #staffApp{display:none;min-height:100vh;flex-direction:column;}
-#staffApp.active{display:flex;}
+#staffApp.active{display:flex !important;visibility:visible !important;}
 .s-topbar{background:#fff;border-bottom:1px solid var(--border);padding:12px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 6px rgba(22,18,14,.06);}
 .s-brand{font-family:'Bebas Neue',sans-serif;font-size:1.45rem;letter-spacing:2px;color:var(--accent);}
 .s-brand span{color:var(--ink);}
@@ -99,7 +99,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
 /* ═══════════════ ADMIN SHELL ═══════════════ */
 #adminApp{display:none;min-height:100vh;}
-#adminApp.active{display:flex;}
+#adminApp.active{display:flex !important;visibility:visible !important;}
 .a-sidebar{width:232px;min-height:100vh;background:var(--ink);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100;}
 .a-sb-brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.07);}
 .a-sb-brand .logo{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:2px;color:#e8f5ee;}
@@ -452,6 +452,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
   /* Prevent iOS input zoom (font-size must be >= 16px) */
   input,select,textarea{font-size:16px !important;}
+  #loginScreen{align-items:flex-start;padding-top:30px;padding-bottom:40px;}
   .fg input,.fg select,.fg textarea{font-size:16px !important;}
   .search-input{font-size:16px !important;}
   .w-row input,.i-row input{font-size:16px !important;}
@@ -2406,6 +2407,21 @@ async function load(){
       DB.shifts.sort((a,b) => new Date(b.date) - new Date(a.date));
     }
 
+    // ── FIRST RUN SEED ──
+    // If Firestore has no users/branches/settings, this is a fresh database.
+    // Write the DEF defaults up to Firestore so all devices share them.
+    const isFirstRun = !usersSnap.exists() && !branchesSnap.exists() && !settingsSnap.exists();
+    if(isFirstRun){
+      console.log('First run detected — seeding Firestore with defaults...');
+      showSyncStatus('Setting up database...');
+      await saveSettings();
+      await saveUsers();
+      await saveBranches();
+      await saveRiders();
+      console.log('Firestore seeded ✅');
+      showNotifDelayed('✅ Database initialised! Default staff and branches are ready.');
+    }
+
     localSave();
     hideSyncStatus();
     console.log('Data loaded from Firestore ✅');
@@ -2414,6 +2430,10 @@ async function load(){
     console.error('Firestore load error:', e);
     hideSyncStatus();
   }
+}
+
+function showNotifDelayed(msg){
+  setTimeout(()=>showNotif(msg,'ok'), 2000);
 }
 
 // ── REAL-TIME LISTENERS ──
@@ -2555,9 +2575,26 @@ function doLogin(){
   } else {
     CU._loginBranch=u.branchId||document.getElementById('loginBranch').value;
   }
-  document.getElementById('loginScreen').style.display='none';
+  // Hide login screen
+  const ls=document.getElementById('loginScreen');
+  ls.style.display='none';
+  ls.style.visibility='hidden';
+  // Attach real-time listeners
   attachRealtimeListeners();
-  u.role==='admin'?launchAdmin():launchStaff();
+  // Launch correct app
+  try{
+    u.role==='admin'?launchAdmin():launchStaff();
+  }catch(e){
+    console.error('Launch error:',e);
+    // Force show the app even if render fails
+    if(u.role==='admin'){
+      document.getElementById('adminApp').classList.add('active');
+      document.getElementById('adminApp').style.display='flex';
+    } else {
+      document.getElementById('staffApp').classList.add('active');
+      document.getElementById('staffApp').style.display='flex';
+    }
+  }
 }
 function toggleMode(){
   loginMode=loginMode==='staff'?'admin':'staff';
@@ -2581,22 +2618,26 @@ function branchName(id){return DB.branches.find(b=>b.id===id)?.name||id;}
 // STAFF LAUNCH
 // ══════════════════════════════════════════════════════
 function launchStaff(){
-  document.getElementById('staffApp').classList.add('active');
-  document.getElementById('sUserName').textContent=CU.name;
-  document.getElementById('sBranchPill').textContent=branchName(CU._loginBranch);
-  document.getElementById('tp-branch').textContent=branchName(CU._loginBranch).toUpperCase()+' · TARKWA';
-  populateRiderSelect();
-  initOrderForm();
-  renderBoard();
-  renderStaffCustomers();
-  renderShift();
+  const staffApp=document.getElementById('staffApp');
+  staffApp.classList.add('active');
+  staffApp.style.display='flex';
+  staffApp.style.visibility='visible';
+  const uEl=document.getElementById('sUserName');if(uEl)uEl.textContent=CU.name;
+  const bEl=document.getElementById('sBranchPill');if(bEl)bEl.textContent=branchName(CU._loginBranch);
+  const tEl=document.getElementById('tp-branch');if(tEl)tEl.textContent=branchName(CU._loginBranch).toUpperCase()+' · TARKWA';
+  try{populateRiderSelect();}catch(e){}
+  try{initOrderForm();}catch(e){console.error(e);}
+  try{renderBoard();}catch(e){console.error(e);}
+  try{renderStaffCustomers();}catch(e){console.error(e);}
+  try{renderShift();}catch(e){console.error(e);}
   // Show expenditure tab only for supervisors
   const isSupervisor = CU.roleLabel==='Supervisor';
-  document.getElementById('expTab').style.display = isSupervisor ? 'block' : 'none';
+  const expTab=document.getElementById('expTab');
+  if(expTab)expTab.style.display = isSupervisor ? 'block' : 'none';
   if(isSupervisor){
-    document.getElementById('sExpDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('sExpBranchLabel').textContent = branchName(CU._loginBranch);
-    renderSExpBody();
+    const sExpDate=document.getElementById('sExpDate');if(sExpDate)sExpDate.value=new Date().toISOString().split('T')[0];
+    const sExpBL=document.getElementById('sExpBranchLabel');if(sExpBL)sExpBL.textContent=branchName(CU._loginBranch);
+    try{renderSExpBody();}catch(e){}
   }
   startClock('sClock');
   checkOverdue();
@@ -3662,29 +3703,35 @@ function submitShift(){
 // ADMIN LAUNCH
 // ══════════════════════════════════════════════════════
 function launchAdmin(){
-  document.getElementById('adminApp').classList.add('active');
-  document.getElementById('aUserName').textContent=CU.name;
-  populateAdminBranchFilters();
-  renderDashboard();
-  renderPricingPanel();
-  renderExpBody();
-  renderStaff();
-  renderRiders();
-  renderBranches();
-  renderCustomers();
-  renderAOrders();
-  initAnalyticsFilters();
-  loadLoyaltySettings();
+  const adminApp=document.getElementById('adminApp');
+  adminApp.classList.add('active');
+  adminApp.style.display='flex';
+  adminApp.style.visibility='visible';
+  // Inject dynamic pages immediately so all nav items work
+  injectAdminPages();
+  const uEl=document.getElementById('aUserName');
+  if(uEl)uEl.textContent=CU.name;
+  try{populateAdminBranchFilters();}catch(e){console.error(e);}
+  try{renderDashboard();}catch(e){console.error(e);}
+  try{renderPricingPanel();}catch(e){console.error(e);}
+  try{renderExpBody();}catch(e){console.error(e);}
+  try{renderStaff();}catch(e){console.error(e);}
+  try{renderRiders();}catch(e){console.error(e);}
+  try{renderBranches();}catch(e){console.error(e);}
+  try{renderCustomers();}catch(e){console.error(e);}
+  try{renderAOrders();}catch(e){console.error(e);}
+  try{initAnalyticsFilters();}catch(e){console.error(e);}
+  try{loadLoyaltySettings();}catch(e){console.error(e);}
   if(!DB.supplies)DB.supplies=[];
   const supBranch=document.getElementById('supBranch');
   if(supBranch)supBranch.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   startClock('aClock');
   checkOverdue();
-  updateSupplyDashAlert();
+  try{updateSupplyDashAlert();}catch(e){}
   const today=new Date().toISOString().split('T')[0];
-  document.getElementById('expDate').value=today;
-  document.getElementById('rptFrom').value=today;
-  document.getElementById('rptTo').value=today;
+  const expDate=document.getElementById('expDate');if(expDate)expDate.value=today;
+  const rptFrom=document.getElementById('rptFrom');if(rptFrom)rptFrom.value=today;
+  const rptTo=document.getElementById('rptTo');if(rptTo)rptTo.value=today;
 }
 function populateAdminBranchFilters(){
   const opts=`<option value="all">All Branches</option>`+DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
@@ -3695,11 +3742,15 @@ function populateAdminBranchFilters(){
   if(sB)sB.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
 }
 function showAPage(page,el){
+  // Ensure dynamically injected pages exist before trying to show them
+  injectAdminPages();
   document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
-  document.getElementById('ap-'+page).classList.add('active');
-  el.classList.add('active');
-  document.getElementById('aPageTitle').textContent=el.textContent.trim();
+  const pageEl = document.getElementById('ap-'+page);
+  if(pageEl) pageEl.classList.add('active');
+  if(el) el.classList.add('active');
+  const titleEl = document.getElementById('aPageTitle');
+  if(titleEl && el) titleEl.textContent=el.textContent.trim();
   if(page==='dashboard')renderDashboard();
   if(page==='orders')renderAOrders();
   if(page==='customers')renderCustomers();
@@ -5421,9 +5472,16 @@ document.addEventListener('click',e=>{
 // MOBILE NAV (admin bottom bar)
 // ══════════════════════════════════════════════════════
 function mobileNav(page, el){
+  // Inject dynamic pages first
+  injectAdminPages();
   // Find the sidebar nav item and trigger showAPage
   const sideItem = document.querySelector(`.a-nav-item[onclick*="'${page}'"]`);
-  if(sideItem) showAPage(page, sideItem);
+  if(sideItem){
+    showAPage(page, sideItem);
+  } else {
+    // Page exists but not in sidebar (e.g. injected pages) — show directly
+    showAPage(page, {classList:{add:()=>{},remove:()=>{}}});
+  }
   // Update bottom nav active state
   if(el){
     document.querySelectorAll('.abn-item').forEach(b=>b.classList.remove('active'));
@@ -6809,9 +6867,26 @@ function addWeightRow(svc, kg){
 // (nervol-check.html) that customers open on their phone.
 // No changes needed here — it reads from the same Firebase project.
 (async () => {
-  await initFirebase();
-  await load();
+  try {
+    await initFirebase();
+    await load();
+  } catch(e) {
+    console.error('Init error:', e);
+    // Continue even if Firebase fails - localStorage backup will be used
+  }
   buildLogin();
+  // Safety check - if loginScreen isn't visible after 3s, force show it
+  setTimeout(() => {
+    const ls = document.getElementById('loginScreen');
+    const sa = document.getElementById('staffApp');
+    const aa = document.getElementById('adminApp');
+    const lsVisible = ls && ls.style.display !== 'none' && ls.style.visibility !== 'hidden';
+    const appVisible = (sa && sa.classList.contains('active')) || (aa && aa.classList.contains('active'));
+    if(!lsVisible && !appVisible) {
+      console.warn('Nothing visible - forcing login screen');
+      if(ls) { ls.style.display='flex'; ls.style.visibility='visible'; }
+    }
+  }, 3000);
 })();
 </script>
 </body>
