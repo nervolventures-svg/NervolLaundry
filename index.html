@@ -3707,6 +3707,8 @@ function launchAdmin(){
   adminApp.classList.add('active');
   adminApp.style.display='flex';
   adminApp.style.visibility='visible';
+  // Inject dynamic pages immediately so all nav items work
+  injectAdminPages();
   const uEl=document.getElementById('aUserName');
   if(uEl)uEl.textContent=CU.name;
   try{populateAdminBranchFilters();}catch(e){console.error(e);}
@@ -3740,11 +3742,15 @@ function populateAdminBranchFilters(){
   if(sB)sB.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
 }
 function showAPage(page,el){
+  // Ensure dynamically injected pages exist before trying to show them
+  injectAdminPages();
   document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
-  document.getElementById('ap-'+page).classList.add('active');
-  el.classList.add('active');
-  document.getElementById('aPageTitle').textContent=el.textContent.trim();
+  const pageEl = document.getElementById('ap-'+page);
+  if(pageEl) pageEl.classList.add('active');
+  if(el) el.classList.add('active');
+  const titleEl = document.getElementById('aPageTitle');
+  if(titleEl && el) titleEl.textContent=el.textContent.trim();
   if(page==='dashboard')renderDashboard();
   if(page==='orders')renderAOrders();
   if(page==='customers')renderCustomers();
@@ -5466,9 +5472,16 @@ document.addEventListener('click',e=>{
 // MOBILE NAV (admin bottom bar)
 // ══════════════════════════════════════════════════════
 function mobileNav(page, el){
+  // Inject dynamic pages first
+  injectAdminPages();
   // Find the sidebar nav item and trigger showAPage
   const sideItem = document.querySelector(`.a-nav-item[onclick*="'${page}'"]`);
-  if(sideItem) showAPage(page, sideItem);
+  if(sideItem){
+    showAPage(page, sideItem);
+  } else {
+    // Page exists but not in sidebar (e.g. injected pages) — show directly
+    showAPage(page, {classList:{add:()=>{},remove:()=>{}}});
+  }
   // Update bottom nav active state
   if(el){
     document.querySelectorAll('.abn-item').forEach(b=>b.classList.remove('active'));
