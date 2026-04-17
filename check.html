@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Nervol Laundry — Check Order Status</title>
+<style>
+  :root{
+    --green:#1a6b3c;--green-l:#e8f5ee;--green-d:#0c3a20;
+    --ink:#1a2e1e;--muted:#6a8a72;--border:#d4e4d9;
+    --accent:#4adc7a;--red:#dc2626;--gold:#d97706;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif;
+    background:linear-gradient(150deg,#0c1a10 0%,#162a1c 60%,#0c1a10 100%);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .card{
+    background:#fff;border-radius:18px;padding:28px 24px;
+    width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .brand{text-align:center;margin-bottom:20px;}
+  .brand h1{font-size:1.6rem;font-weight:900;letter-spacing:3px;color:var(--green-d);}
+  .brand h1 span{color:var(--green);}
+  .brand p{font-size:.72rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+  label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  input{
+    width:100%;padding:13px 15px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:1rem;outline:none;font-family:inherit;margin-bottom:14px;
+    transition:border-color .18s;
+  }
+  input:focus{border-color:var(--green);}
+  button{
+    width:100%;padding:14px;background:linear-gradient(135deg,var(--green-d),var(--green));
+    color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;
+    cursor:pointer;letter-spacing:.5px;transition:opacity .18s;
+  }
+  button:hover{opacity:.9;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  #result{margin-top:18px;display:none;}
+  .order-card{
+    border:1px solid var(--border);border-radius:12px;padding:16px;
+    margin-bottom:10px;background:#fafef9;
+  }
+  .order-id{font-family:monospace;font-size:.78rem;color:var(--green);font-weight:700;margin-bottom:4px;}
+  .order-status{
+    display:inline-block;padding:4px 12px;border-radius:20px;
+    font-size:.76rem;font-weight:700;margin-bottom:8px;
+  }
+  .status-pending{background:#fef9c3;color:#713f12;}
+  .status-washing{background:#dbeafe;color:#1e3a8a;}
+  .status-ready{background:#dcfce7;color:#14532d;}
+  .status-delivery{background:#ede9fe;color:#3b0764;}
+  .status-collected{background:#f3f4f6;color:#374151;}
+  .info-row{display:flex;justify-content:space-between;font-size:.82rem;padding:3px 0;border-bottom:1px solid var(--border);}
+  .info-row:last-child{border:none;}
+  .info-row span:first-child{color:var(--muted);}
+  .info-row span:last-child{font-weight:600;}
+  .bal{color:var(--red)!important;}
+  .empty{text-align:center;padding:24px;color:var(--muted);font-size:.9rem;}
+  .err{background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px 14px;color:var(--red);font-size:.86rem;margin-top:14px;}
+  .loading{text-align:center;color:var(--muted);padding:20px;font-size:.88rem;}
+  .eta{font-size:.76rem;color:var(--muted);margin-top:6px;}
+  .overdue{color:var(--red);font-size:.74rem;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <h1>NERVOL <span>LAUNDRY</span></h1>
+    <p>Order Status Check</p>
+  </div>
+
+  <label>Your Phone Number</label>
+  <input type="tel" id="phoneInput" placeholder="e.g. 0244123456"
+    oninput="clearResult()" onkeydown="if(event.key==='Enter')checkStatus()">
+  <button id="checkBtn" onclick="checkStatus()">Check My Orders →</button>
+
+  <div id="result"></div>
+</div>
+
+<script>
+// ── Firebase Configuration ──
+const firebaseConfig = {
+  apiKey: "AIzaSyDyqqoj11-IUfTJvTrxXCxLH_gFypxhFEM",
+  authDomain: "nervollaundry-8978e.firebaseapp.com",
+  projectId: "nervollaundry-8978e",
+  storageBucket: "nervollaundry-8978e.firebasestorage.app",
+  messagingSenderId: "359468253380",
+  appId: "1:359468253380:web:a2b4a39f98920723380991"
+};
+
+let db = null;
+
+function loadFirebase(){
+  return new Promise(resolve => {
+    if(window.firebase){ initDB(); resolve(); return; }
+    const s1 = document.createElement('script');
+    s1.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js';
+      s2.onload = () => { initDB(); resolve(); };
+      s2.onerror = () => resolve();
+      document.head.appendChild(s2);
+    };
+    s1.onerror = () => resolve();
+    document.head.appendChild(s1);
+  });
+}
+
+function initDB(){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch(e){ console.log('Firebase already initialized'); db = firebase.firestore(); }
+}
+
+function clearResult(){
+  document.getElementById('result').style.display='none';
+}
+
+async function checkStatus(){
+  const phone = document.getElementById('phoneInput').value.trim().replace(/\s/g,'');
+  if(!phone){ alert('Please enter your phone number.'); return; }
+
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = true; btn.textContent = 'Checking...';
+  document.getElementById('result').innerHTML = '<div class="loading">🔄 Loading your orders...</div>';
+  document.getElementById('result').style.display = 'block';
+
+  if(!db){ await loadFirebase(); }
+  if(!db){ document.getElementById('result').innerHTML='<div class="err">Could not connect. Please try again.</div>'; btn.disabled=false; btn.textContent='Check My Orders →'; return; }
+
+  try {
+    const snap = await db.collection('orders').get();
+    const allOrders = [];
+    snap.forEach(d => allOrders.push(d.data()));
+
+    // Match by phone number (strip non-digits, match last 9 digits)
+    const clean = phone.replace(/\D/g,'').slice(-9);
+    const myOrders = allOrders.filter(o => {
+      const oPhone = (o.customerPhone||'').replace(/\D/g,'').slice(-9);
+      return oPhone === clean && o.status !== 'collected';
+    }).sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+
+    if(!myOrders.length){
+      document.getElementById('result').innerHTML = `
+        <div class="empty">
+          <div style="font-size:2rem;margin-bottom:8px;">🧺</div>
+          <strong>No active orders found</strong><br>
+          <span style="font-size:.82rem;">for ${phone}</span><br><br>
+          <span style="font-size:.78rem;color:#aaa;">Already collected orders don't appear here.<br>Check the phone number and try again.</span>
+        </div>`;
+    } else {
+      const statusLabels = {pending:'📋 Received',washing:'🫧 Being Washed',ready:'✅ Ready!',delivery:'🛵 Out for Delivery',collected:'📦 Collected'};
+      const statusClasses = {pending:'status-pending',washing:'status-washing',ready:'status-ready',delivery:'status-delivery',collected:'status-collected'};
+      const now = new Date();
+
+      document.getElementById('result').innerHTML = `
+        <div style="font-weight:700;font-size:.88rem;color:var(--green-d);margin-bottom:10px;">
+          Found ${myOrders.length} active order${myOrders.length>1?'s':''} for ${phone}:
+        </div>` +
+        myOrders.map(o => {
+          const hrs = Math.floor((now - new Date(o.createdAt))/3600000);
+          const days = Math.floor(hrs/24);
+          const timeAgo = days>0?`${days}d ${hrs%24}h ago`:`${hrs}h ago`;
+          const isOverdue = (o.status==='washing'&&hrs>24)||(o.status==='ready'&&hrs>48)||(o.status==='pending'&&hrs>48);
+          const isReady = o.status==='ready';
+          return `
+          <div class="order-card" style="${isReady?'border-color:#4adc7a;background:#f0fff4;':''}${isOverdue?'border-color:#fca5a5;':''}">
+            <div class="order-id">${o.id}</div>
+            <div><span class="order-status ${statusClasses[o.status]||'status-pending'}">${statusLabels[o.status]||o.status}</span></div>
+            ${isOverdue?`<div class="overdue">⚠️ Taking longer than expected</div>`:''}
+            <div class="info-row"><span>Branch</span><span>${o.branchId||'—'}</span></div>
+            <div class="info-row"><span>Items</span><span>${[...(o.weightItems||[]).map(i=>i.service+' '+i.kg+'kg'),...(o.specialItems||[]).map(i=>i.name+'×'+i.qty),...(o.beddingItems||[]).map(i=>i.name+'×'+i.qty)].join(', ')||'—'}</span></div>
+            <div class="info-row"><span>Total</span><span>GH₵${(o.total||0).toFixed(2)}</span></div>
+            ${o.balanceDue>0?`<div class="info-row"><span>Balance Due</span><span class="bal">GH₵${o.balanceDue.toFixed(2)}</span></div>`:'<div class="info-row"><span>Payment</span><span style="color:var(--green);">✅ Fully Paid</span></div>'}
+            <div class="eta">${timeAgo}${o.status==='ready'?' — Please collect soon! 🎉':o.status==='washing'?' — Washing in progress...':o.status==='delivery'?' — Rider is on the way! 🛵':''}</div>
+          </div>`;
+        }).join('');
+    }
+  } catch(e){
+    console.error(e);
+    document.getElementById('result').innerHTML = '<div class="err">Connection error. Please check your internet and try again.</div>';
+  }
+
+  btn.disabled = false; btn.textContent = 'Check My Orders →';
+}
+
+// Auto-load Firebase on page load
+loadFirebase();
+</script>
+</body>
+</html>
