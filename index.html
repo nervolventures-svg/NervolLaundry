@@ -95,7 +95,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 .s-nav-tab .tab-badge{background:var(--accent2);color:#fff;border-radius:10px;padding:1px 6px;font-size:.66rem;font-weight:700;}
 .s-body{flex:1;padding:22px;max-width:1360px;margin:0 auto;width:100%;}
 .s-page{display:none;}
-.s-page.show{display:block;}
+.s-page.show{display:block !important;}
 
 /* ═══════════════ ADMIN SHELL ═══════════════ */
 #adminApp{display:none;min-height:100vh;}
@@ -2643,14 +2643,25 @@ function launchStaff(){
   checkOverdue();
 }
 function showSTab(tab,el){
-  document.querySelectorAll('.s-page').forEach(p=>p.classList.remove('show'));
-  document.querySelectorAll('.s-nav-tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('sp-'+tab).classList.add('show');
-  el.classList.add('active');
-  if(tab==='board')renderBoard();
-  if(tab==='shift')renderShift();
-  if(tab==='customers')renderStaffCustomers();
-  if(tab==='expenditure'){renderSExpBody();document.getElementById('sExpBranchLabel').textContent=branchName(CU._loginBranch);}
+  try{
+    document.querySelectorAll('.s-page').forEach(p=>p.classList.remove('show'));
+    document.querySelectorAll('.s-nav-tab').forEach(t=>t.classList.remove('active'));
+    const pageEl=document.getElementById('sp-'+tab);
+    if(pageEl) pageEl.classList.add('show');
+    if(el) el.classList.add('active');
+    if(tab==='board') renderBoard();
+    if(tab==='shift') renderShift();
+    if(tab==='customers') renderStaffCustomers();
+    if(tab==='quote'){calcQuote();renderQuoteList();}
+    if(tab==='complaints') renderStaffComplaints();
+    if(tab==='expenditure'){
+      try{renderSExpBody();}catch(e){}
+      const lbl=document.getElementById('sExpBranchLabel');
+      if(lbl) lbl.textContent=branchName(CU._loginBranch);
+    }
+  }catch(e){
+    console.error('showSTab error:',tab,e);
+  }
 }
 function populateRiderSelect(){
   const sel=document.getElementById('riderSelect');
@@ -3742,20 +3753,24 @@ function populateAdminBranchFilters(){
   if(sB)sB.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
 }
 function showAPage(page,el){
-  // Ensure dynamically injected pages exist before trying to show them
-  injectAdminPages();
-  document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
-  const pageEl = document.getElementById('ap-'+page);
-  if(pageEl) pageEl.classList.add('active');
-  if(el) el.classList.add('active');
-  const titleEl = document.getElementById('aPageTitle');
-  if(titleEl && el) titleEl.textContent=el.textContent.trim();
-  if(page==='dashboard')renderDashboard();
-  if(page==='orders')renderAOrders();
-  if(page==='customers')renderCustomers();
-  if(page==='analytics'){initAnalyticsFilters();renderAnalytics();}
-  if(page==='supplies'){renderSupplies();}
+  try{
+    // Ensure dynamically injected pages exist before trying to show them
+    injectAdminPages();
+    document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
+    const pageEl=document.getElementById('ap-'+page);
+    if(pageEl) pageEl.classList.add('active');
+    if(el) el.classList.add('active');
+    const titleEl=document.getElementById('aPageTitle');
+    if(titleEl && el) titleEl.textContent=el.textContent.trim();
+    if(page==='dashboard') renderDashboard();
+    if(page==='orders') renderAOrders();
+    if(page==='customers') renderCustomers();
+    if(page==='analytics'){initAnalyticsFilters();renderAnalytics();}
+    if(page==='supplies') renderSupplies();
+  }catch(e){
+    console.error('showAPage error:',page,e);
+  }
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
 function getBranchFilter(){return document.getElementById('aBranchFilter')?.value||'all';}
@@ -6419,7 +6434,7 @@ function launchAdmin(){
 // V5 — MOBILE NAV UPDATE (add new pages to "more")
 // ══════════════════════════════════════════════════════
 // Update more panel with new pages
-document.getElementById('abnMorePanel').innerHTML=`
+(function(){ const _mp=document.getElementById('abnMorePanel'); if(!_mp) return; _mp.innerHTML=`
   <div class="abn-more-item" onclick="mobileNav('pricing');toggleMorePanel()"><span style="font-size:1.2rem;">💰</span>Pricing</div>
   <div class="abn-more-item" onclick="mobileNav('promos');toggleMorePanel()"><span style="font-size:1.2rem;">🎟️</span>Promos</div>
   <div class="abn-more-item" onclick="mobileNav('debttracker');toggleMorePanel()"><span style="font-size:1.2rem;">💳</span>Debts</div>
@@ -6436,8 +6451,7 @@ document.getElementById('abnMorePanel').innerHTML=`
   <div class="abn-more-item" onclick="mobileNav('supplies');toggleMorePanel()"><span style="font-size:1.2rem;">🧴</span>Supplies</div>
   <div class="abn-more-item" onclick="mobileNav('staff');toggleMorePanel()"><span style="font-size:1.2rem;">👥</span>Staff</div>
   <div class="abn-more-item" onclick="logout()" style="color:#e07060;"><span style="font-size:1.2rem;">🚪</span>Logout</div>
-`;
-
+``; })();
 // ══════════════════════════════════════════════════════
 // V5B — INVOICE GENERATOR
 // ══════════════════════════════════════════════════════
