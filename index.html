@@ -2673,8 +2673,15 @@ function liveCalc(){
 
   const grand=wT+spT+bdT+trT;
   // Loyalty discount
-  const discPct=selCust?checkLoyalty(selCust):0;
-  const discAmt=discPct>0?parseFloat((grand*discPct/100).toFixed(2)):0;
+  const loyPct=selCust?checkLoyalty(selCust):0;
+  const loyAmt=loyPct>0?parseFloat((grand*loyPct/100).toFixed(2)):0;
+  // Promo discount (takes precedence over loyalty if both active)
+  const promoPct=activePromo?activePromo.discountPct:0;
+  const promoAmt=promoPct>0?parseFloat((grand*promoPct/100).toFixed(2)):0;
+  // Use whichever discount is higher
+  const discPct=promoAmt>=loyAmt?promoPct:loyPct;
+  const discAmt=promoAmt>=loyAmt?promoAmt:loyAmt;
+  const discLabel=promoAmt>=loyAmt&&promoPct>0?'🎟️ '+activePromo.code+' ('+promoPct+'% off)':'⭐ '+loyPct+'% loyalty discount';
   const grandAfterDisc=grand-discAmt;
 
   const payStatus=document.getElementById('payStatus')?.value||'unpaid';
@@ -2698,7 +2705,7 @@ function liveCalc(){
     discWrap.style.display='block';
     document.getElementById('tb-disc').textContent=`-GH₵ ${discAmt.toFixed(2)}`;
     loyBadge.style.display='block';
-    loyBadge.textContent=`⭐ ${discPct}% loyalty discount applied`;
+    loyBadge.textContent=discLabel;
   } else {
     discWrap.style.display='none';
     loyBadge.style.display='none';
@@ -2708,10 +2715,10 @@ function liveCalc(){
   if(balance>0&&payStatus!=='paid'){balWrap.style.display='block';document.getElementById('tb-bal').textContent=`GH₵ ${balance.toFixed(2)}`;}
   else balWrap.style.display='none';
 
-  updateTicketPreview(wT,spT,bdT,trT,grand,deposit,balance,payStatus,discAmt,discPct);
+  updateTicketPreview(wT,spT,bdT,trT,grand,deposit,balance,payStatus,discAmt,discPct,discLabel||'');
 }
 
-function updateTicketPreview(wT,spT,bdT,trT,grand,deposit,balance,payStatus,discAmt=0,discPct=0){
+function updateTicketPreview(wT,spT,bdT,trT,grand,deposit,balance,payStatus,discAmt=0,discPct=0,discLabel=''){
   const custName=selCust?selCust.name:(document.getElementById('newCustName')?.value.trim()||'—');
   const phone=selCust?.phone||'—';
   const num=String(DB.nextOrderNum).padStart(4,'0');
@@ -2736,7 +2743,7 @@ function updateTicketPreview(wT,spT,bdT,trT,grand,deposit,balance,payStatus,disc
   if(brs.length){body+='<div class="t-sec">🛏️ Bedding</div>';brs.forEach(r=>{const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;const item=DB.beddingItems.find(i=>i.id===pid);if(item)body+=`<div class="t-row"><span>${item.name} ×${qty}</span><span>GH₵${(item.price*qty).toFixed(2)}</span></div>`;});}
   const selTr=DB.treatments.filter(t=>{const cb=document.getElementById('trcb-'+t.id);return cb&&cb.checked;});
   if(selTr.length){body+='<div class="t-sec">🧪 Treatments</div>';selTr.forEach(t=>body+=`<div class="t-row"><span>${t.name}</span><span>GH₵${t.price.toFixed(2)}</span></div>`);}
-  if(discAmt>0){body+=`<div class="t-row" style="color:#f0b840;margin-top:4px;"><span>⭐ Loyalty Discount (${discPct}%)</span><span>-GH₵${discAmt.toFixed(2)}</span></div>`;}
+  if(discAmt>0){const dl=discLabel||(discPct>0?'Discount ('+discPct+'%)':'Discount');body+=`<div class="t-row" style="color:#f0b840;margin-top:4px;"><span>${dl}</span><span>-GH₵${discAmt.toFixed(2)}</span></div>`;}
   document.getElementById('tp-body').innerHTML=body||'<span style="color:#2a4a32">Add items...</span>';
 }
 
@@ -2784,9 +2791,25 @@ function submitOrder(){
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
   const trT=treatments.reduce((s,i)=>s+i.price,0);
   const subtotal=wT+spT+bdT+trT;
-  const discPct=checkLoyalty(selCust);
-  const discAmt=discPct>0?parseFloat((subtotal*discPct/100).toFixed(2)):0;
+  // Apply promo discount if active, else loyalty
+  const loyPct=checkLoyalty(selCust);
+  const promoPct=activePromo?activePromo.discountPct:0;
+  const promoAmt=promoPct>0?parseFloat((subtotal*promoPct/100).toFixed(2)):0;
+  const loyAmt=loyPct>0?parseFloat((subtotal*loyPct/100).toFixed(2)):0;
+  const discPct=promoAmt>=loyAmt?promoPct:loyPct;
+  const discAmt=promoAmt>=loyAmt?promoAmt:loyAmt;
+  const promoCode=activePromo?.code||'';
+  const discLabel=promoAmt>=loyAmt&&promoPct>0?'🎟️ '+promoCode+' ('+promoPct+'% off)':'⭐ '+loyPct+'% loyalty';
   const total=subtotal-discAmt;
+  // Mark promo as used
+  if(activePromo){
+    const p=DB.promos.find(x=>x.id===activePromo.id);
+    if(p)p.usedCount=(p.usedCount||0)+1;
+    activePromo=null;
+    const pc=document.getElementById('promoCode');if(pc)pc.value='';
+    const ps=document.getElementById('promoStatus');if(ps)ps.textContent='';
+    saveSettings();
+  }
   const payStatus=document.getElementById('payStatus').value;
   const deposit=payStatus==='partial'?parseFloat(document.getElementById('depositAmt').value)||0:payStatus==='paid'?total:0;
   const riderId=document.getElementById('riderSelect').value;
@@ -2798,7 +2821,7 @@ function submitOrder(){
     riderId,
     notes:document.getElementById('orderNotes').value.trim(),
     weightItems,specialItems,beddingItems,treatments,
-    wTotal:wT,spTotal:spT,bdTotal:bdT,trTotal:trT,subtotal,discPct,discAmt,total,
+    wTotal:wT,spTotal:spT,bdTotal:bdT,trTotal:trT,subtotal,discPct,discAmt,promoCode,discLabel,total,
     payStatus,depositPaid:deposit,balanceDue:Math.max(0,total-deposit),
     status:'pending',createdBy:CU.id,createdAt:new Date().toISOString(),
   };
@@ -3251,7 +3274,7 @@ function viewOrder(id){
   if(o.specialItems?.length){body+='<div class="t-sec">✨ SPECIAL ITEMS</div>';o.specialItems.forEach(i=>body+='<div class="t-row"><span>'+i.name+' ×'+i.qty+'</span><span>GH₵'+i.subtotal.toFixed(2)+'</span></div>');}
   if(o.beddingItems?.length){body+='<div class="t-sec">🛏️ BEDDING</div>';o.beddingItems.forEach(i=>body+='<div class="t-row"><span>'+i.name+' ×'+i.qty+'</span><span>GH₵'+i.subtotal.toFixed(2)+'</span></div>');}
   if(o.treatments?.length){body+='<div class="t-sec">🧪 TREATMENTS</div>';o.treatments.forEach(i=>body+='<div class="t-row"><span>'+i.name+'</span><span>GH₵'+i.price.toFixed(2)+'</span></div>');}
-  if(o.discAmt>0){body+='<div class="t-row" style="color:#f0b840;"><span>⭐ Loyalty ('+o.discPct+'%)</span><span>-GH₵'+o.discAmt.toFixed(2)+'</span></div>';}
+  if(o.discAmt>0){const dl2=o.discLabel||(o.promoCode?'🎟️ '+o.promoCode+' ('+o.discPct+'%)':'⭐ Loyalty ('+o.discPct+'%)');body+='<div class="t-row" style="color:#f0b840;"><span>'+dl2+'</span><span>-GH₵'+o.discAmt.toFixed(2)+'</span></div>';}
   const brn=branchName(o.branchId).toUpperCase();
   const payTxt=o.payStatus==='paid'?'Fully Paid ✅':o.payStatus==='partial'?'Deposit GH₵'+(o.depositPaid||0).toFixed(2):'Unpaid';
   document.getElementById('viewModalContent').innerHTML='<style>.t-row{display:flex;justify-content:space-between;font-family:JetBrains Mono,monospace;font-size:.74rem;line-height:1.85;}.t-sec{color:#4a7a58;font-size:.6rem;letter-spacing:1px;text-transform:uppercase;margin:5px 0 2px;}.t-hr{border:none;border-top:1px dashed #2a4a32;margin:7px 0;}</style>'
@@ -4501,28 +4524,41 @@ function adminOrderBranchChange(){
 function showAdminOrderItems(){
   const wrap=document.getElementById('adminOrderItems');
   if(!wrap)return;
-  // Reuse staff order form content
+  const branch=document.getElementById('adminOrderBranch')?.value||CU._loginBranch;
+  if(CU)CU._loginBranch=branch;
   wrap.innerHTML=`
     <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="sb-w">GH₵ 0.00</span><span class="chevron">▼</span></div>
+      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="sb-weight">GH₵ 0.00</span><span class="chevron">▼</span></div>
       <div class="o-sec-body open"><div id="weightRows"></div><button class="add-row-btn" onclick="addWeightRow()">+ Add</button></div>
     </div>
     <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="sb-s">GH₵ 0.00</span><span class="chevron">▼</span></div>
+      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="sb-special">GH₵ 0.00</span><span class="chevron">▼</span></div>
       <div class="o-sec-body open"><div id="specialRows"></div><button class="add-row-btn" onclick="addSpecialRow()">+ Add</button></div>
     </div>
     <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>🛏️</span><span>Bedding</span><span class="sec-badge" id="sb-b">GH₵ 0.00</span><span class="chevron">▼</span></div>
+      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>🛏️</span><span>Bedding</span><span class="sec-badge" id="sb-bedding">GH₵ 0.00</span><span class="chevron">▼</span></div>
       <div class="o-sec-body open"><div id="beddingRows"></div><button class="add-row-btn" onclick="addBeddingRow()">+ Add</button></div>
+    </div>
+    <div class="o-section">
+      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>🧴</span><span>Treatments</span><span class="sec-badge" id="sb-treat">GH₵ 0.00</span><span class="chevron">▼</span></div>
+      <div class="o-sec-body open"><div id="treatGrid" class="treat-grid"></div></div>
+    </div>
+    <div class="order-total-bar" id="orderTotalBar">
+      <div class="t-row"><span>Weight</span><span id="tb-w">GH₵ 0.00</span></div>
+      <div class="t-row"><span>Special</span><span id="tb-s">GH₵ 0.00</span></div>
+      <div class="t-row"><span>Bedding</span><span id="tb-b">GH₵ 0.00</span></div>
+      <div class="t-row"><span>Treatments</span><span id="tb-t">GH₵ 0.00</span></div>
+      <div class="t-row disc-row" id="tb-disc-wrap" style="display:none"><span id="loyalty-badge"></span><span id="tb-disc"></span></div>
+      <div class="t-row bal-row" id="tb-bal-wrap" style="display:none"><span>Balance Due</span><span id="tb-bal"></span></div>
     </div>
     <div class="card" style="margin-top:12px;">
       <div class="form-grid">
         <div class="fg"><label>Payment</label>
-          <select id="payStatus" onchange="wirePaymentStatus()">
+          <select id="payStatus" onchange="liveCalc()">
             <option value="unpaid">Unpaid</option>
             <option value="partial">Part Payment</option>
             <option value="paid">Fully Paid</option>
-            <option value="momo">MoMo</option>
+            <option value="momo">MoMo Payment</option>
           </select>
         </div>
         <div class="fg"><label>Delivery</label>
@@ -4533,15 +4569,21 @@ function showAdminOrderItems(){
         </div>
       </div>
       <div class="fg" id="depositWrap" style="display:none;"><label>Deposit (GH₵)</label><input type="number" id="depositAmt" min="0" step="0.50" placeholder="0.00" oninput="liveCalc()"></div>
-      <div id="momoWrap2" style="display:none;">
-        <div class="fg"><label>MoMo Txn ID</label><input type="text" id="momoTxId" placeholder="Transaction ID"></div>
-      </div>
+      <div class="fg"><label>Rider (optional)</label><select id="riderSelect"></select></div>
       <div class="fg"><label>Notes</label><textarea id="orderNotes" placeholder="Special instructions..."></textarea></div>
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
+        <div class="fg" style="flex:1;margin-bottom:0;"><label>🎟️ Promo / Discount Code</label>
+          <input type="text" id="promoCode" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="applyPromo()">Apply</button>
+        <span id="promoStatus" style="font-size:.78rem;"></span>
+      </div>
       <div class="grand-display" id="grandDisplay">GH₵ 0.00</div>
       <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="submitOrder()">✅ Submit Order</button>
     </div>`;
   initOrderForm();
 }
+
 function adminSearchCust(q){
   const res=document.getElementById('adminCustResults');
   if(!res)return;
