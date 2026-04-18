@@ -2350,14 +2350,15 @@ function supervisorLogExp(){
   if(!desc){showNotif('Enter a description.','err');return;}
   if(!amt||amt<=0){showNotif('Enter a valid amount.','err');return;}
   if(!date){showNotif('Select a date.','err');return;}
-  DB.expenditures.unshift({
+  const exp={
     id:'exp'+Date.now(),
     branchId:CU._loginBranch,
     cat,desc,amount:amt,date,
     loggedBy:CU.name,
     createdAt:new Date().toISOString()
-  });
-  saveOrder(o); // update order
+  };
+  DB.expenditures.unshift(exp);
+  saveExpenditure(exp);
   renderSExpBody();
   // Also refresh admin exp if open
   if(document.getElementById('expBody'))renderExpBody();
@@ -3487,6 +3488,19 @@ function adminCreateCustomer(){
   showNotif(name+' added!','ok');
 }
 
+
+function adminDeleteCustomer(id, name){
+  if(!confirm('Delete customer "'+name+'"? This cannot be undone.'))return;
+  DB.customers=DB.customers.filter(c=>c.id!==id);
+  // Also remove from Firestore
+  if(fbReady&&window._fb){
+    const{doc,deleteDoc,db}=window._fb;
+    deleteDoc(doc(db,'customers',id)).catch(e=>console.error('delete customer:',e));
+  }
+  localSave();
+  renderCustomers();
+  showNotif(name+' deleted.','ok');
+}
 function renderCustomers(){
   const q=(document.getElementById('custSearch2')?.value||'').toLowerCase();
   const custs=DB.customers.filter(c=>c.name.toLowerCase().includes(q)||c.phone.includes(q));
@@ -3499,7 +3513,15 @@ function renderCustomers(){
     <td><strong>${c.totalOrders||0}</strong></td>
     <td><strong style="color:var(--accent);">GH₵${(c.totalSpent||0).toFixed(2)}</strong></td>
     <td style="font-size:.74rem;color:var(--muted);">${fmtDateShort(c.createdAt)}</td>
-    <td><button class="btn btn-xs btn-secondary" onclick="adminViewCustHist('${c.id}')">History</button></td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="btn btn-xs btn-secondary" onclick="adminViewCustHist('${c.id}')">History</button>
+      ${CU.role==='admin'
+        ? `<button class="btn btn-xs btn-danger" onclick="adminDeleteCustomer('${c.id}','${c.name.replace(/'/g,"\\'")}')">Delete</button>`
+        : CU.roleLabel==='Supervisor'
+          ? `<button class="btn btn-xs btn-warning" onclick="requestDeletion('customer','${c.id}','${c.name.replace(/'/g,"\\'")}')">🗑 Request Del</button>`
+          : ''
+      }
+    </td>
   </tr>`).join('');
 }
 function adminViewCustHist(id){
