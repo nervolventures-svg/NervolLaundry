@@ -2248,9 +2248,9 @@ function showSTab(tab,el){
   if(tab==='board')renderBoard();
   if(tab==='shift')renderShift();
   if(tab==='customers')renderStaffCustomers();
-  if(tab==='expenditure'){renderSExpBody();document.getElementById('sExpBranchLabel').textContent=branchName(CU._loginBranch);}
+  if(tab==='expenditure'){renderSExpBody();const lbl=document.getElementById('sExpBranchLabel');if(lbl)lbl.textContent=branchName(CU._loginBranch);}
+  }catch(e){console.error('showSTab:',tab,e);}
 }
-  }catch(e){console.error("showSTab:",tab,e);}
 
 function populateRiderSelect(){
   const sel=document.getElementById('riderSelect');
@@ -3294,16 +3294,19 @@ function populateAdminBranchFilters(){
   if(sB)sB.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
 }
 function showAPage(page,el){
-  document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
-  const aPg=document.getElementById('ap-'+page);if(aPg)aPg.classList.add('active');
-  el.classList.add('active');
-  document.getElementById('aPageTitle').textContent=el.textContent.trim();
-  if(page==='dashboard')renderDashboard();
-  if(page==='orders')renderAOrders();
-  if(page==='customers')renderCustomers();
-  if(page==='analytics'){initAnalyticsFilters();renderAnalytics();}
-  if(page==='supplies'){renderSupplies();}
+  try{
+    document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
+    const aPg=document.getElementById('ap-'+page);if(aPg)aPg.classList.add('active');
+    if(el)el.classList.add('active');
+    const titleEl=document.getElementById('aPageTitle');
+    if(titleEl&&el)titleEl.textContent=el.textContent.trim();
+    if(page==='dashboard')renderDashboard();
+    if(page==='orders')renderAOrders();
+    if(page==='customers')renderCustomers();
+    if(page==='analytics'){try{initAnalyticsFilters();renderAnalytics();}catch(e){}}
+    if(page==='supplies'){try{renderSupplies();}catch(e){}}
+  }catch(e){console.error('showAPage:',page,e);}
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
 function getBranchFilter(){return document.getElementById('aBranchFilter')?.value||'all';}
@@ -4833,25 +4836,32 @@ function calcQuote(){
   if(smsBtn&&phone){const msg=buildQuoteMsg(total);smsBtn.href=`sms:+${phone}?body=${encodeURIComponent(msg)}`;}
 }
 function buildQuoteMsg(total){
-  const name=document.getElementById('q-cname')?.value.trim()||'';
+  const name=(document.getElementById('q-cname')?.value||'').trim();
   const branch=branchName(CU._loginBranch);
-  const CHECK_URL='https://nervollaundry.vercel.app/check';
+  const NL='\n';
   let lines=[];
-  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{const svc=r.querySelector('select').value;const kg=parseFloat(r.querySelector('input').value)||0;const rate=svc==='fold'?DB.weightPricing.fold:DB.weightPricing.iron;if(kg>0)lines.push(`${svc==='fold'?'Wash & Fold':'Wash & Iron'} ${kg}kg — GH₵${(kg*rate).toFixed(2)}`);});
-  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;const item=DB.specialItems.find(i=>i.id===pid);if(item)lines.push(`${item.name} ×${qty} — GH₵${(item.price*qty).toFixed(2)}`);});
-  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;const item=DB.beddingItems.find(i=>i.id===pid);if(item)lines.push(`${item.name} ×${qty} — GH₵${(item.price*qty).toFixed(2)}`);});
-  return `Hello${name?' '+name:''}! 👋
-
-Here is your laundry price quote from *Nervol Laundry — ${branch}*:
-
-${lines.join('
-')}
-
-*ESTIMATED TOTAL: GH₵${total.toFixed(2)}*
-
-📱 Track orders: ${CHECK_URL}
-
-Contact us to confirm. Thank you!`;
+  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{
+    const svc=r.querySelector('select').value;
+    const kg=parseFloat(r.querySelector('input').value)||0;
+    const rate=svc==='fold'?DB.weightPricing.fold:DB.weightPricing.iron;
+    if(kg>0)lines.push((svc==='fold'?'Wash & Fold':'Wash & Iron')+' '+kg+'kg - GH'+String.fromCharCode(8355)+(kg*rate).toFixed(2));
+  });
+  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{
+    const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;
+    const item=DB.specialItems.find(i=>i.id===pid);
+    if(item)lines.push(item.name+' x'+qty+' - GH'+String.fromCharCode(8355)+(item.price*qty).toFixed(2));
+  });
+  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{
+    const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;
+    const item=DB.beddingItems.find(i=>i.id===pid);
+    if(item)lines.push(item.name+' x'+qty+' - GH'+String.fromCharCode(8355)+(item.price*qty).toFixed(2));
+  });
+  return 'Hello'+(name?' '+name:'')+' !'
+    +NL+NL+'Price quote from Nervol Laundry - '+branch+':'
+    +NL+NL+lines.join(NL)
+    +NL+NL+'TOTAL: GH'+String.fromCharCode(8355)+total.toFixed(2)
+    +NL+NL+'Track orders: '+CHECK_URL
+    +NL+NL+'Thank you!';
 }
 function shareQuoteWA(){
   const el=document.getElementById('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
