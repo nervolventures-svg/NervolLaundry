@@ -2194,6 +2194,11 @@ function doLogin(){
     CU._loginBranch=u.branchId||document.getElementById('loginBranch').value;
   }
   const ls=document.getElementById('loginScreen');if(ls){ls.style.display='none';}
+  // Ensure both apps are fully reset before launching correct one
+  const sa=document.getElementById('staffApp');
+  const aa=document.getElementById('adminApp');
+  if(sa){sa.classList.remove('active');sa.style.display='none';}
+  if(aa){aa.classList.remove('active');aa.style.display='none';}
   attachRealtimeListeners();
   u.role==='admin'?launchAdmin():launchStaff();
 }
@@ -4882,8 +4887,14 @@ function shareQuoteWA(){
 }
 function convertQuoteToOrder(){
   // Switch to order tab and pre-fill
-  const tab=document.querySelector('.s-nav-tab[onclick*="order"]');
+  const allTabs=document.querySelectorAll('.s-nav-tab');
+  let tab=null;
+  allTabs.forEach(t=>{if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'order'"))tab=t;});
   if(tab)showSTab('order',tab);
+  else{// fallback - just show the order page directly
+    document.querySelectorAll('.s-page').forEach(p=>p.classList.remove('show'));
+    const op=document.getElementById('sp-order');if(op)op.classList.add('show');
+  }
   setTimeout(()=>{
     // Clear existing rows
     document.getElementById('weightRows').innerHTML='';
