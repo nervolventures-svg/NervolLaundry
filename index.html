@@ -2298,22 +2298,28 @@ function renderStaffCustomers(){
   const tbody=document.getElementById('sCustTableBody');
   if(!tbody)return;
   if(!custs.length){
-    tbody.innerHTML=`<tr><td colspan="6"><div class="empty"><div class="ei">👤</div><p>${q?'No customers match your search.':'No customers yet. Create one above.'}</p></div></td></tr>`;
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="ei">👤</div><p>'+(q?'No customers match your search.':'No customers yet. Create one above.')+'</p></div></td></tr>';
     return;
   }
-  tbody.innerHTML=custs.map(c=>`
-    <tr>
-      <td><strong>${c.name}</strong></td>
-      <td>${c.phone}</td>
-      <td style="font-size:.78rem;color:var(--muted);">${c.address||'—'}</td>
-      <td><strong>${c.totalOrders||0}</strong></td>
-      <td><strong style="color:var(--accent);">GH₵${(c.totalSpent||0).toFixed(2)}</strong></td>
-      <td><div class="tbl-actions">
-        <button class="btn btn-xs btn-secondary" onclick="staffViewCustHistory('${c.id}')">History</button>
-        <button class="btn btn-xs btn-primary" onclick="staffStartOrderFor('${c.id}')">New Order</button>
-        ${CU?.roleLabel==='Supervisor'?`<button class="btn btn-xs btn-warning" onclick="requestDeletion('customer','${c.id}','${c.name.replace(/'/g,"\\'")}')">🗑 Del Request</button>`:''}
-      </div></td>
-    </tr>`).join('');
+  const isSup=CU?.roleLabel==='Supervisor';
+  tbody.innerHTML=custs.map(c=>{
+    const safeName=c.name.replace(/['"]/g,'');
+    const delBtn=isSup
+      ? '<button class="btn btn-xs btn-warning" onclick="requestDeletion(\'customer\',\''+c.id+'\',\''+safeName+'\')">🗑 Del Request</button>'
+      : '';
+    return '<tr>'
+      +'<td><strong>'+c.name+'</strong></td>'
+      +'<td>'+c.phone+'</td>'
+      +'<td style="font-size:.78rem;color:var(--muted);">'+(c.address||'—')+'</td>'
+      +'<td><strong>'+(c.totalOrders||0)+'</strong></td>'
+      +'<td><strong style="color:var(--accent);">GH&#x20B5;'+(c.totalSpent||0).toFixed(2)+'</strong></td>'
+      +'<td><div class="tbl-actions">'
+      +'<button class="btn btn-xs btn-secondary" onclick="staffViewCustHistory(\''+c.id+'\')">History</button>'
+      +'<button class="btn btn-xs btn-primary" onclick="staffStartOrderFor(\''+c.id+'\')">New Order</button>'
+      +delBtn
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
 }
 
 function staffViewCustHistory(id){
@@ -3527,27 +3533,33 @@ function adminDeleteCustomer(id, name){
 }
 function renderCustomers(){
   const q=(document.getElementById('custSearch2')?.value||'').toLowerCase();
-  const custs=DB.customers.filter(c=>c.name.toLowerCase().includes(q)||c.phone.includes(q));
+  const custs=DB.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.phone||'').includes(q));
   const tbody=document.getElementById('custTableBody');if(!tbody)return;
-  if(!custs.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="ei">👤</div><p>No customers yet.</p></div></td></tr>`;return;}
-  tbody.innerHTML=custs.map(c=>`<tr>
-    <td><strong>${c.name}</strong></td>
-    <td>${c.phone}</td>
-    <td style="font-size:.78rem;">${c.address||'—'}</td>
-    <td><strong>${c.totalOrders||0}</strong></td>
-    <td><strong style="color:var(--accent);">GH₵${(c.totalSpent||0).toFixed(2)}</strong></td>
-    <td style="font-size:.74rem;color:var(--muted);">${fmtDateShort(c.createdAt)}</td>
-    <td style="display:flex;gap:4px;flex-wrap:wrap;">
-      <button class="btn btn-xs btn-secondary" onclick="adminViewCustHist('${c.id}')">History</button>
-      ${CU.role==='admin'
-        ? `<button class="btn btn-xs btn-danger" onclick="adminDeleteCustomer('${c.id}','${c.name.replace(/'/g,"\\'")}')">Delete</button>`
-        : CU.roleLabel==='Supervisor'
-          ? `<button class="btn btn-xs btn-warning" onclick="requestDeletion('customer','${c.id}','${c.name.replace(/'/g,"\\'")}')">🗑 Request Del</button>`
-          : ''
-      }
-    </td>
-  </tr>`).join('');
+  if(!custs.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="ei">👤</div><p>No customers yet.</p></div></td></tr>';return;}
+  const isAdmin=CU?.role==='admin';
+  const isSup=CU?.roleLabel==='Supervisor';
+  tbody.innerHTML=custs.map(c=>{
+    const safeName=c.name.replace(/['"]/g,'');
+    const delBtn=isAdmin
+      ? '<button class="btn btn-xs btn-danger" onclick="adminDeleteCustomer(\''+c.id+'\',\''+safeName+'\')">Delete</button>'
+      : isSup
+        ? '<button class="btn btn-xs btn-warning" onclick="requestDeletion(\'customer\',\''+c.id+'\',\''+safeName+'\')">🗑 Request Del</button>'
+        : '';
+    return '<tr>'
+      +'<td><strong>'+c.name+'</strong></td>'
+      +'<td>'+c.phone+'</td>'
+      +'<td style="font-size:.78rem;">'+(c.address||'—')+'</td>'
+      +'<td><strong>'+(c.totalOrders||0)+'</strong></td>'
+      +'<td><strong style="color:var(--accent);">GH&#x20B5;'+(c.totalSpent||0).toFixed(2)+'</strong></td>'
+      +'<td style="font-size:.74rem;color:var(--muted);">'+fmtDateShort(c.createdAt)+'</td>'
+      +'<td style="display:flex;gap:4px;flex-wrap:wrap;">'
+      +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist(\''+c.id+'\')">History</button>'
+      +delBtn
+      +'</td>'
+      +'</tr>';
+  }).join('');
 }
+
 function adminViewCustHist(id){
   const c=DB.customers.find(x=>x.id===id);if(!c)return;
   const orders=DB.orders.filter(o=>o.customerId===id);
