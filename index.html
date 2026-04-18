@@ -534,6 +534,8 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   background:var(--ink);border-top:1px solid rgba(255,255,255,.1);
   padding:10px;
 }
+.abn-more{display:none;position:fixed;bottom:56px;left:0;right:0;background:#fff;border-top:1px solid var(--border);grid-template-columns:repeat(4,1fr);gap:2px;padding:10px;z-index:299;}
+.abn-more.open{display:grid;}
 .abn-more-panel.open{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .abn-more-item{
   background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
@@ -4502,9 +4504,17 @@ function createPromo(){
   const exp=document.getElementById('promo-exp')?.value;
   const max=parseInt(document.getElementById('promo-max')?.value)||0;
   const desc=(document.getElementById('promo-desc')?.value||'').trim();
-  if(!code||!pct||!exp){showNotif('Fill code, discount and expiry.','err');return;}
-  DB.promos.push({id:'pr'+Date.now(),code,discountPct:pct,expiry:exp,maxUses:max,usedCount:0,description:desc,active:true,createdBy:CU.name,createdAt:new Date().toISOString()});
-  saveSettings();renderPromos();showNotif(`Promo ${code} created!`,'ok');
+  if(!code){showNotif('Enter a promo code.','err');return;}
+  if(!pct){showNotif('Enter a discount %.','err');return;}
+  if(!exp){showNotif('Set an expiry date.','err');return;}
+  if(!DB.promos)DB.promos=[];
+  DB.promos.push({id:'pr'+Date.now(),code,discountPct:pct,expiry:exp,maxUses:max,usedCount:0,description:desc,active:true,createdBy:CU?.name||'Admin',createdAt:new Date().toISOString()});
+  saveSettings();
+  renderPromos();
+  // Clear form
+  const codeEl=document.getElementById('promo-code');if(codeEl)codeEl.value='';
+  const descEl=document.getElementById('promo-desc');if(descEl)descEl.value='';
+  showNotif('Promo '+code+' created!','ok');
 }
 function renderPromos(){
   const tbody=document.getElementById('promoBody');if(!tbody)return;
