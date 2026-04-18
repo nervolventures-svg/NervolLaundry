@@ -1689,6 +1689,1155 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 <div class="notif" id="notif"></div>
 
 <script>
+
+
+
+
+
+(async () => {
+  await initFirebase();
+  await load();
+  buildLogin();
+})();
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div id="syncBar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99998;background:var(--accent);color:#fff;text-align:center;padding:6px;font-size:.78rem;font-weight:600;">🔄 Syncing...</div>
+<div id="offlineBanner" style="display:none;background:#d97706;color:#fff;text-align:center;padding:7px;font-size:.8rem;font-weight:600;position:fixed;top:0;left:0;right:0;z-index:99999;">
+  📴 Offline Mode — using local data. Open on <strong>nervollaundry.vercel.app</strong> for full sync.
+</div>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="wordmark">NERVOL <em>LAUNDRY</em></div>
+      <div class="tagline">Management Platform · Tarkwa</div>
+    </div>
+    <div class="login-card">
+      <div class="l-label" id="loginModeLabel">Staff Login</div>
+      <div class="branch-select-wrap">
+        <div class="l-label" style="font-size:.64rem;color:#2a5a38;">Your Branch</div>
+        <select id="loginBranch"></select>
+      </div>
+      <div class="l-label" style="font-size:.64rem;color:#2a5a38;margin-bottom:8px;">Select your name</div>
+      <div class="user-grid" id="userGrid"></div>
+      <div class="l-label" style="font-size:.64rem;color:#2a5a38;margin-bottom:8px;">Enter 4-digit PIN</div>
+      <div class="pin-dots" id="pinDots"></div>
+      <div class="pinpad">
+        <button class="pin-key" onclick="pp('1')">1</button><button class="pin-key" onclick="pp('2')">2</button><button class="pin-key" onclick="pp('3')">3</button>
+        <button class="pin-key" onclick="pp('4')">4</button><button class="pin-key" onclick="pp('5')">5</button><button class="pin-key" onclick="pp('6')">6</button>
+        <button class="pin-key" onclick="pp('7')">7</button><button class="pin-key" onclick="pp('8')">8</button><button class="pin-key" onclick="pp('9')">9</button>
+        <button class="pin-key fn" onclick="pp('C')">CLR</button><button class="pin-key" onclick="pp('0')">0</button><button class="pin-key fn" onclick="pp('D')">⌫</button>
+      </div>
+      <button class="login-submit" id="loginBtn" disabled onclick="doLogin()">SIGN IN →</button>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-mode-row"><button onclick="toggleMode()">Switch to <span id="modeToggleLbl">Admin Login</span></button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ STAFF APP ═══════════ -->
+<div id="staffApp">
+  <div class="s-topbar">
+    <div class="s-brand">NERVOL <span>LAUNDRY</span></div>
+    <div class="s-meta">
+      <span class="branch-pill" id="sBranchPill">—</span>
+      <span class="user-pill">👤 <span id="sUserName">—</span></span>
+      <span class="s-clock" id="sClock"></span>
+      <button class="btn btn-ghost btn-sm" onclick="openChangePIN()" style="font-size:.74rem;">🔑 PIN</button>
+      <button class="s-logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="s-nav">
+    <div class="s-nav-tab active" onclick="showSTab('order',this)">➕ New Order</div>
+    <div class="s-nav-tab" onclick="showSTab('quote',this)">💬 Quote</div>
+    <div class="s-nav-tab" onclick="showSTab('board',this)">📋 Orders Board <span class="tab-badge" id="overdueCount" style="display:none">0</span></div>
+    <div class="s-nav-tab" onclick="showSTab('customers',this)">👤 Customers</div>
+    <div class="s-nav-tab" onclick="showSTab('complaints',this)">⚠️ Complaints</div>
+    <div class="s-nav-tab" id="expTab" style="display:none;" onclick="showSTab('expenditure',this)">💸 Expenditure</div>
+    <div class="s-nav-tab" onclick="showSTab('shift',this)">🔄 Shift Handover</div>
+  </div>
+  <div class="s-body">
+
+    <!-- NEW ORDER -->
+    <div class="s-page show" id="sp-order">
+      <div class="order-layout">
+        <div>
+          <!-- Customer -->
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">Customer Details</div>
+            <div class="cust-lookup" style="margin-bottom:12px;">
+              <div class="fg">
+                <label>Search or Create Customer *</label>
+                <input type="text" id="custSearch" placeholder="Type name or phone to search..." autocomplete="off" oninput="custSearchFn()">
+              </div>
+              <div class="cust-results" id="custResults"></div>
+            </div>
+            <div id="custSelected" style="display:none;margin-bottom:12px;">
+              <div style="background:var(--accent-l);border:1.5px solid var(--accent);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <div style="font-weight:600;font-size:.9rem;" id="cs-name">—</div>
+                  <div style="font-size:.76rem;color:var(--muted);" id="cs-meta">—</div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-sm btn-secondary" onclick="viewCustHistory()">History</button>
+                  <button class="btn btn-sm btn-ghost" onclick="clearCust()">✕ Clear</button>
+                </div>
+              </div>
+            </div>
+            <div id="custNewForm" style="display:none;">
+              <div class="form-grid" style="margin-bottom:10px;">
+                <div class="fg"><label>Full Name *</label><input type="text" id="newCustName" placeholder="Customer name"></div>
+                <div class="fg"><label>Phone *</label><input type="tel" id="newCustPhone" placeholder="0244123456"></div>
+              </div>
+              <div class="fg" style="margin-bottom:10px;"><label>Address (optional)</label><input type="text" id="newCustAddr" placeholder="Area / house number"></div>
+              <button class="btn btn-primary btn-sm" onclick="createCustomer()">✓ Create & Select Customer</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="newCustToggle" onclick="toggleNewCustForm()" style="margin-top:6px;">+ New Customer</button>
+            <hr class="form-divider">
+            <div class="form-grid">
+              <div class="fg"><label>Delivery Type</label>
+                <select id="deliveryType" onchange="liveCalc()">
+                  <option value="pickup">Customer Pickup</option>
+                  <option value="delivery">Home Delivery (Rider)</option>
+                </select>
+              </div>
+              <div class="fg" id="riderFieldWrap">
+                <label>Assign Rider</label>
+                <select id="riderSelect" onchange="liveCalc()"><option value="">— No rider —</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weight Section -->
+          <div class="o-section sec-weight">
+            <div class="o-sec-hdr open" onclick="toggleSec(this)">
+              <span>⚖️</span><span>Weight-Based Washing</span>
+              <span class="sec-badge" id="sb-weight">GH₵ 0.00</span><span class="chevron">▼</span>
+            </div>
+            <div class="o-sec-body open">
+              <div id="weightRows"></div>
+              <button class="add-row-btn" onclick="addWeightRow()">+ Add</button>
+            </div>
+          </div>
+
+          <!-- Special Section -->
+          <div class="o-section sec-special">
+            <div class="o-sec-hdr open" onclick="toggleSec(this)">
+              <span>✨</span><span>Special Items (per piece)</span>
+              <span class="sec-badge" id="sb-special">GH₵ 0.00</span><span class="chevron">▼</span>
+            </div>
+            <div class="o-sec-body open">
+              <div id="specialRows"></div>
+              <button class="add-row-btn" onclick="addSpecialRow()">+ Add</button>
+            </div>
+          </div>
+
+          <!-- Bedding Section -->
+          <div class="o-section sec-bedding">
+            <div class="o-sec-hdr open" onclick="toggleSec(this)">
+              <span>🛏️</span><span>Bedding & Curtains</span>
+              <span class="sec-badge" id="sb-bedding">GH₵ 0.00</span><span class="chevron">▼</span>
+            </div>
+            <div class="o-sec-body open">
+              <div id="beddingRows"></div>
+              <button class="add-row-btn" onclick="addBeddingRow()">+ Add</button>
+            </div>
+          </div>
+
+          <!-- Treatments Section -->
+          <div class="o-section sec-treatments">
+            <div class="o-sec-hdr open" onclick="toggleSec(this)">
+              <span>🧪</span><span>Treatments & Add-ons</span>
+              <span class="sec-badge" id="sb-treat">GH₵ 0.00</span><span class="chevron">▼</span>
+            </div>
+            <div class="o-sec-body open">
+              <div class="treat-grid" id="treatGrid"></div>
+            </div>
+          </div>
+
+          <!-- Notes & Payment -->
+          <div class="card" style="margin-top:12px;">
+            <div class="form-grid">
+              <div class="fg">
+                <label>Special Notes</label>
+                <textarea id="orderNotes" placeholder="e.g. No bleach on kente, handle rug gently..."></textarea>
+              </div>
+              <div>
+                <div class="fg" style="margin-bottom:10px;">
+                  <label>Payment Status</label>
+                  <select id="payStatus">
+                    <option value="unpaid">Unpaid (pay on collection)</option>
+                    <option value="partial">Deposit Paid</option>
+                    <option value="paid">Fully Paid</option>
+                  <option value="momo">MoMo Payment</option>
+                  </select>
+                </div>
+                <div class="fg" id="depositWrap" style="display:none;">
+                  <label>Deposit Amount (GH₵)</label>
+                  <input type="number" id="depositAmt" min="0" step="0.50" placeholder="0.00" oninput="liveCalc()">
+                </div>
+            <div id="momoWrap" style="display:none;">
+              <div class="fg"><label>MoMo Transaction ID</label><input type="text" id="momoTxId" placeholder="Transaction ID"></div>
+            <div style="display:flex;gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap;">
+              <div class="fg" style="flex:1;margin-bottom:0;"><label>Promo Code</label>
+                <input type="text" id="promoCode" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="applyPromo()">Apply</button>
+              <span id="promoStatus" style="font-size:.78rem;padding-bottom:4px;"></span>
+            </div>
+              <div class="fg"><label>MoMo Number</label><input type="tel" id="momoNum" placeholder="0244123456"></div>
+            </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Bar -->
+          <div class="total-bar">
+            <div class="total-breakdown">
+              <div class="tb-item">Weight<span id="tb-w">GH₵ 0.00</span></div>
+              <div class="tb-item">Special<span id="tb-s">GH₵ 0.00</span></div>
+              <div class="tb-item">Bedding<span id="tb-b">GH₵ 0.00</span></div>
+              <div class="tb-item">Treatments<span id="tb-t">GH₵ 0.00</span></div>
+              <div class="tb-item" id="tb-disc-wrap" style="display:none;">Loyalty Discount<span id="tb-disc" style="color:#f0b840;">-GH₵ 0.00</span></div>
+              <div class="tb-item" id="tb-bal-wrap" style="display:none;">Balance Due<span id="tb-bal" style="color:#e07060;">GH₵ 0.00</span></div>
+            </div>
+            <div>
+              <div id="loyalty-badge" style="display:none;font-size:.7rem;color:#f0b840;text-align:right;margin-bottom:2px;"></div>
+              <div class="total-grand" id="grandDisplay">GH₵ 0.00</div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" style="margin-top:10px;padding:13px;font-size:.95rem;" onclick="submitOrder()">✅ Create Order</button>
+        </div>
+
+        <!-- Ticket Preview -->
+        <div style="position:sticky;top:78px;" class="ticket-sticky">
+          <div class="ticket" id="ticketPreview">
+            <div class="t-brand">NERVOL LAUNDRY</div>
+            <div class="t-sub" id="tp-branch">WASH STATION · TARKWA</div>
+            <hr class="t-hr">
+            <div class="t-row"><span>ORDER</span><span class="t-oid" id="tp-id">NL-????-????</span></div>
+            <div class="t-row"><span>DATE</span><span id="tp-date">—</span></div>
+            <div class="t-row"><span>CUSTOMER</span><span id="tp-cust">—</span></div>
+            <div class="t-row"><span>PHONE</span><span id="tp-phone">—</span></div>
+            <hr class="t-hr">
+            <div id="tp-body"><span style="color:#2a4a32;">Add items to preview...</span></div>
+            <hr class="t-hr">
+            <div class="t-total"><span>TOTAL</span><span id="tp-total">GH₵ 0.00</span></div>
+            <div class="t-row t-pay" id="tp-pay-row"><span>PAYMENT</span><span id="tp-pay">Unpaid</span></div>
+            <div class="t-row t-bal" id="tp-bal-row" style="display:none;"><span>BALANCE</span><span id="tp-bal">GH₵ 0.00</span></div>
+            <hr class="t-hr">
+            <div class="t-row" style="color:#4a7a58;"><span>DELIVERY</span><span id="tp-delivery">Pickup</span></div>
+            <div class="t-row" style="color:#4a7a58;"><span>STATUS</span><span>PENDING ⏳</span></div>
+            <hr class="t-hr">
+            <div style="text-align:center;color:#2a4a32;font-size:.6rem;margin-top:5px;">Thank you for choosing Nervol Laundry!</div>
+          </div>
+          <button class="btn btn-ghost btn-full btn-sm" style="margin-top:7px;font-size:.74rem;color:var(--muted);" onclick="printOnly()">Preview ticket without saving</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS BOARD -->
+    <div class="s-page" id="sp-board">
+      <div class="card">
+        <div class="board-bar">
+          <input type="text" class="search-input" placeholder="🔍  Search orders..." id="boardSearch" oninput="renderBoard()">
+          <input type="date" id="boardFrom" onchange="renderBoard()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;background:#fff;">
+          <input type="date" id="boardTo" onchange="renderBoard()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;background:#fff;">
+          <button class="btn btn-ghost btn-sm" onclick="clearBoardDates()">Clear Dates</button>
+          <button class="btn btn-primary btn-sm" onclick="openBulkWA()">📣 Notify Customers</button>
+          <div class="ftabs" id="boardFtabs">
+            <div class="ftab active" onclick="setBoardFilter('all',this)">All</div>
+            <div class="ftab" onclick="setBoardFilter('pending',this)">Pending</div>
+            <div class="ftab" onclick="setBoardFilter('washing',this)">Washing</div>
+            <div class="ftab" onclick="setBoardFilter('ready',this)">Ready</div>
+            <div class="ftab" onclick="setBoardFilter('delivery',this)">Delivery</div>
+            <div class="ftab" onclick="setBoardFilter('collected',this)">Collected</div>
+            <div class="ftab" onclick="setBoardFilter('overdue',this)">⚠️ Overdue</div>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Summary</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="boardBody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- CUSTOMERS (Staff) -->
+    <div class="s-page" id="sp-customers">
+
+      <!-- Create Customer -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">➕ Create New Customer</div>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="fg"><label>Full Name *</label><input type="text" id="sc-name" placeholder="e.g. Ama Owusu"></div>
+          <div class="fg"><label>Phone *</label><input type="tel" id="sc-phone" placeholder="e.g. 0244123456"></div>
+        </div>
+        <div class="fg" style="margin-bottom:12px;"><label>Address (optional)</label><input type="text" id="sc-addr" placeholder="e.g. Tarkwa New Site"></div>
+        <button class="btn btn-primary" onclick="staffCreateCustomer()">✓ Create Customer</button>
+      </div>
+
+      <!-- Search & List -->
+      <div class="card">
+        <div class="card-title">👥 Customer List</div>
+        <div class="board-bar" style="margin-bottom:12px;">
+          <input type="text" class="search-input" placeholder="🔍  Search by name or phone..." id="sCustSearch" oninput="renderStaffCustomers()" style="max-width:100%;">
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Orders</th>
+                <th>Total Spent</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sCustTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPENDITURE (Supervisor only) -->
+    <div class="s-page" id="sp-expenditure">
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">💸 Log Expenditure</div>
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">Supervisor access — log branch expenses here. All entries are visible to Admin.</p>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="fg">
+            <label>Category</label>
+            <select id="sExpCat">
+              <option>Detergent / Chemicals</option>
+              <option>Water / Utilities</option>
+              <option>Rider Fees</option>
+              <option>Equipment Maintenance</option>
+              <option>Staff Allowances</option>
+              <option>Miscellaneous</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Description *</label>
+            <input type="text" id="sExpDesc" placeholder="e.g. Omo 5kg, Comfort softener">
+          </div>
+        </div>
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="fg">
+            <label>Amount (GH₵) *</label>
+            <input type="number" id="sExpAmt" min="0" step="0.50" placeholder="0.00">
+          </div>
+          <div class="fg">
+            <label>Date</label>
+            <input type="date" id="sExpDate">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="supervisorLogExp()">+ Log Expense</button>
+      </div>
+
+      <!-- This branch expenses log -->
+      <div class="card">
+        <div class="card-title">Recent Expenses — <span id="sExpBranchLabel">—</span></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>By</th></tr></thead>
+            <tbody id="sExpBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHIFT HANDOVER -->
+    <div class="s-page" id="sp-shift">
+      <div class="shift-card" style="margin-bottom:16px;">
+        <div class="sc-title">End of Shift — Cash Reconciliation</div>
+        <div class="sc-sub">Branch: <span id="shiftBranch">—</span> &nbsp;·&nbsp; Staff: <span id="shiftStaff">—</span></div>
+
+    <!-- QUOTE -->
+    <div class="s-page" id="sp-quote">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">💬 Price Quote</div>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">Generate a price estimate for a customer without creating an order.</p>
+        <div class="fg"><label>Customer Name (optional)</label><input type="text" id="q-cname" placeholder="Walk-in customer..."></div>
+        <div class="fg"><label>Phone</label><input type="tel" id="q-phone" placeholder="0244123456"></div>
+      </div>
+      <div class="o-section">
+        <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="qsb-w">GH₵ 0.00</span><span class="chevron">▼</span></div>
+        <div class="o-sec-body open"><div id="qWeightRows"></div><button class="add-row-btn" onclick="addQWeightRow()">+ Add</button></div>
+      </div>
+      <div class="o-section">
+        <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="qsb-s">GH₵ 0.00</span><span class="chevron">▼</span></div>
+        <div class="o-sec-body open"><div id="qSpecialRows"></div><button class="add-row-btn" onclick="addQSpecialRow()">+ Add</button></div>
+      </div>
+      <div class="o-section">
+        <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>🛏️</span><span>Bedding</span><span class="sec-badge" id="qsb-b">GH₵ 0.00</span><span class="chevron">▼</span></div>
+        <div class="o-sec-body open"><div id="qBeddingRows"></div><button class="add-row-btn" onclick="addQBeddingRow()">+ Add</button></div>
+      </div>
+      <div style="background:var(--ink);color:#fff;border-radius:var(--r);padding:14px 18px;margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div><div style="font-size:.7rem;color:#6a9a7a;text-transform:uppercase;letter-spacing:.5px;">Estimated Total</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#4adc7a;" id="qTotal">GH₵ 0.00</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-whatsapp btn-sm" onclick="shareQuoteWA()">💬 WhatsApp</button>
+          <a id="qSMSBtn" href="#" class="btn btn-sms btn-sm">✉️ SMS</a>
+          <button class="btn btn-primary btn-sm" onclick="convertQuoteToOrder()">✅ Create Order</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPLAINTS -->
+    <div class="s-page" id="sp-complaints">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">⚠️ Log Complaint / Issue</div>
+        <div class="form-grid">
+          <div class="fg"><label>Order ID (if known)</label><input type="text" id="comp-order" placeholder="NL-2026-..."></div>
+          <div class="fg"><label>Type</label>
+            <select id="comp-type">
+              <option value="damage">Item Damaged</option>
+              <option value="missing">Item Missing</option>
+              <option value="quality">Quality Issue</option>
+              <option value="delay">Delay</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label>Customer Name</label><input type="text" id="comp-cust" placeholder="Customer name"></div>
+        <div class="fg"><label>Description *</label><textarea id="comp-desc" placeholder="Describe the issue..."></textarea></div>
+        <button class="btn btn-danger" onclick="staffLogComplaint()">⚠️ Log Complaint</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Complaints</div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Order</th><th>Type</th><th>Customer</th><th>Status</th></tr></thead><tbody id="compBody"></tbody></table></div>
+      </div>
+    </div>
+        <div class="shift-grid" id="shiftStats"></div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="fg" style="flex:1;min-width:180px;">
+            <label style="color:#4a7a58;font-size:.68rem;letter-spacing:.5px;">ACTUAL CASH IN HAND (GH₵)</label>
+            <input type="number" id="actualCash" min="0" step="0.50" placeholder="Enter cash count..." style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#e8f5ee;border-radius:8px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;">
+          </div>
+          <div class="fg" style="flex:1;min-width:180px;">
+            <label style="color:#4a7a58;font-size:.68rem;letter-spacing:.5px;">HANDOVER NOTES</label>
+            <textarea id="handoverNotes" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#e8f5ee;border-radius:8px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;resize:none;min-height:60px;" placeholder="e.g. 3 orders ready for collection, rider out on 2 deliveries..."></textarea>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:9px;align-items:center;" id="shiftVariance"></div>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="submitShift()">📝 Submit Shift Handover</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Shift Log</div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Staff</th><th>Branch</th><th>Expected</th><th>Actual</th><th>Variance</th><th>Orders</th><th>Notes</th></tr></thead><tbody id="shiftLogBody"></tbody></table></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════ ADMIN APP ═══════════ -->
+<div id="adminApp">
+  <div class="a-sidebar">
+    <div class="a-sb-brand"><div class="logo">NERVOL <em>LAUNDRY</em></div><p>Admin Console</p></div>
+    <div class="a-sb-user"><small>Logged in as</small><strong id="aUserName">Admin</strong></div>
+    <nav class="a-nav">
+      <div class="a-nav-item active" onclick="showAPage('dashboard',this)"><span class="ic">📊</span> Dashboard</div>
+      <div class="a-nav-item" onclick="showAPage('orders',this)"><span class="ic">📋</span> All Orders <span class="n-badge" id="overdueNav" style="display:none">!</span></div>
+      <div class="a-nav-item" onclick="showAPage('customers',this)"><span class="ic">👤</span> Customers</div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showAPage('pricing',this)"><span class="ic">💰</span> Pricing</div>
+      <div class="a-nav-item" onclick="showAPage('expenditure',this)"><span class="ic">💸</span> Expenditure</div>
+      <div class="a-nav-item" onclick="showAPage('reports',this)"><span class="ic">📈</span> Reports</div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showAPage('analytics',this)"><span class="ic">🧠</span> Analytics</div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showAPage('riders',this)"><span class="ic">🛵</span> Riders</div>
+      <div class="a-nav-item" onclick="showAPage('branches',this)"><span class="ic">🏪</span> Branches</div>
+      <div class="a-nav-item" onclick="showAPage('supplies',this)"><span class="ic">🧴</span> Supplies</div>
+      <div class="a-nav-item" onclick="showAPage('staff',this)"><span class="ic">👥</span> Staff</div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showAPage('debttracker',this)"><span class="ic">💳</span> Debt Tracker</div>
+      <div class="a-nav-item" onclick="showAPage('promos',this)"><span class="ic">🎟️</span> Promo Codes</div>
+      <div class="a-nav-item" onclick="showAPage('pettycash',this)"><span class="ic">🪙</span> Petty Cash</div>
+      <div class="a-nav-item" onclick="showAPage('float',this)"><span class="ic">💵</span> Cash Float</div>
+      <div class="a-nav-item" onclick="showAPage('turnaround',this)"><span class="ic">⏱️</span> Turnaround</div>
+      <div class="a-nav-item" onclick="showAPage('complaints',this)"><span class="ic">⚠️</span> Complaints</div>
+      <div class="a-nav-item" onclick="showAPage('ridertrips',this)"><span class="ic">🛵</span> Rider Trips</div>
+      <div class="a-nav-item" onclick="showAPage('approvals',this)"><span class="ic">✅</span> Approvals <span class="n-badge" id="approvalsBadge" style="display:none">0</span></div>
+    </nav>
+    <div class="a-sb-foot"><button class="a-sb-logout" onclick="logout()">🚪 Logout</button></div>
+  </div>
+  <div class="a-main">
+    <div class="a-topbar">
+      <div class="a-page-title" id="aPageTitle">Dashboard</div>
+      <div class="a-topbar-right">
+        <div class="branch-filter-wrap"><select id="aBranchFilter" onchange="onBranchFilterChange()"><option value="all">All Branches</option></select></div>
+        <div class="a-clock" id="aClock"></div>
+      </div>
+    </div>
+    <div class="a-body">
+
+      <!-- DASHBOARD -->
+      <div class="a-page active" id="ap-dashboard">
+        <div id="supplyDashAlert" style="display:none;"></div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val green" id="d-rev">GH₵ 0</div><div class="stat-label">Today Revenue</div></div>
+          <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-val gold" id="d-orders">0</div><div class="stat-label">Today Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-val red" id="d-exp">GH₵ 0</div><div class="stat-label">Today Expenses</div></div>
+          <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val blue" id="d-active">0</div><div class="stat-label">Active Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-val red" id="d-overdue">0</div><div class="stat-label">Overdue</div></div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-wrap">
+            <div class="chart-title">This Week — Revenue vs Expenses</div>
+            <div class="bar-chart" id="weekChart"></div>
+            <div style="display:flex;gap:12px;margin-top:8px;">
+              <div style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted)"><div style="width:9px;height:9px;background:var(--accent);border-radius:2px;"></div>Revenue</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted)"><div style="width:9px;height:9px;background:var(--accent2);border-radius:2px;opacity:.75;"></div>Expenses</div>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-title">Revenue by Service Type</div>
+            <div id="svcChart"></div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-title">Order Status</div>
+            <div id="statusChart"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Orders</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Branch</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr></thead><tbody id="dashRecent"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ALL ORDERS -->
+      <div class="a-page" id="ap-orders">
+        <div class="card">
+          <div class="board-bar">
+            <input type="text" class="search-input" placeholder="🔍  Search..." id="aOrderSearch" oninput="renderAOrders()">
+            <input type="date" id="aOrderFrom" onchange="renderAOrders()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;background:#fff;">
+            <input type="date" id="aOrderTo" onchange="renderAOrders()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;background:#fff;">
+            <button class="btn btn-ghost btn-sm" onclick="clearAOrderDates()">Clear</button>
+            <div class="ftabs">
+              <div class="ftab active" onclick="setAOFilter('all',this)">All</div>
+              <div class="ftab" onclick="setAOFilter('pending',this)">Pending</div>
+              <div class="ftab" onclick="setAOFilter('washing',this)">Washing</div>
+              <div class="ftab" onclick="setAOFilter('ready',this)">Ready</div>
+              <div class="ftab" onclick="setAOFilter('delivery',this)">Delivery</div>
+              <div class="ftab" onclick="setAOFilter('collected',this)">Collected</div>
+              <div class="ftab" onclick="setAOFilter('overdue',this)">⚠️ Overdue</div>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Branch</th><th>Summary</th><th>Total</th><th>Payment</th><th>Balance</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="aOrdersBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CUSTOMERS -->
+      <div class="a-page" id="ap-customers">
+        <!-- Create Customer -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">➕ Create New Customer</div>
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="fg"><label>Full Name *</label><input type="text" id="ac-name" placeholder="e.g. Kwame Asante"></div>
+            <div class="fg"><label>Phone *</label><input type="tel" id="ac-phone" placeholder="e.g. 0244123456"></div>
+          </div>
+          <div class="fg" style="margin-bottom:12px;max-width:500px;"><label>Address (optional)</label><input type="text" id="ac-addr" placeholder="e.g. Tarkwa New Site, House No. 5"></div>
+          <button class="btn btn-primary btn-sm" onclick="adminCreateCustomer()">✓ Create Customer</button>
+        </div>
+        <!-- List -->
+        <div class="card">
+          <div class="card-title">👥 All Customers</div>
+          <div class="board-bar">
+            <input type="text" class="search-input" placeholder="🔍  Search customers..." id="custSearch2" oninput="renderCustomers()">
+          </div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Total Orders</th><th>Total Spent</th><th>Since</th><th>Actions</th></tr></thead><tbody id="custTableBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- PRICING -->
+      <div class="a-page" id="ap-pricing">
+        <div class="card">
+          <div class="card-title">Pricing Management</div>
+          <div class="ptabs">
+            <div class="ptab active" onclick="showPTab('weight',this)">⚖️ Weight</div>
+            <div class="ptab" onclick="showPTab('special',this)">✨ Special Items</div>
+            <div class="ptab" onclick="showPTab('bedding',this)">🛏️ Bedding</div>
+            <div class="ptab" onclick="showPTab('treatments',this)">🧪 Treatments</div>
+            <div class="ptab" onclick="showPTab('categories',this)">🗂️ Categories</div>
+            <div class="ptab" onclick="showPTab('loyalty',this)">⭐ Loyalty</div>
+          </div>
+          <div class="ptab-pane active" id="pp-weight">
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">Staff enter weight in kg; total = kg × rate.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px;">
+              <div class="price-card"><div class="price-card-info"><h4>Wash & Fold</h4><small>per kg</small></div><div class="price-input-wrap"><span class="px">GH₵</span><input type="number" class="p-input" id="wp-fold" min="0" step="0.5"></div></div>
+              <div class="price-card"><div class="price-card-info"><h4>Wash & Iron</h4><small>per kg</small></div><div class="price-input-wrap"><span class="px">GH₵</span><input type="number" class="p-input" id="wp-iron" min="0" step="0.5"></div></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveWP()">💾 Save</button>
+          </div>
+          <div class="ptab-pane" id="pp-special">
+            <div id="spPricingList"></div>
+            <hr class="form-divider">
+            <div class="form-grid" style="max-width:440px;margin-bottom:8px;">
+              <div class="fg"><label>Item Name</label><input type="text" id="newSPName" placeholder="e.g. Batakari"></div>
+              <div class="fg"><label>Price (GH₵)</label><input type="number" id="newSPPrice" min="0" step="0.5" placeholder="0.00"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="addSPItem()">+ Add Item</button>
+          </div>
+          <div class="ptab-pane" id="pp-bedding">
+            <div id="bdPricingList"></div>
+            <hr class="form-divider">
+            <div class="form-grid g3" style="max-width:600px;margin-bottom:8px;">
+              <div class="fg"><label>Item Name</label><input type="text" id="newBDName" placeholder="e.g. Pillow Case"></div>
+              <div class="fg"><label>Unit</label><input type="text" id="newBDUnit" placeholder="per piece, per pair..."></div>
+              <div class="fg"><label>Price (GH₵)</label><input type="number" id="newBDPrice" min="0" step="0.5" placeholder="0.00"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="addBDItem()">+ Add Item</button>
+          </div>
+          <div class="ptab-pane" id="pp-treatments">
+            <div id="trPricingList"></div>
+          </div>
+
+          <div class="ptab-pane" id="pp-categories">
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">
+              Manage service categories shown on the order form. Each category groups related items together. Changes take effect immediately on new orders.
+            </p>
+
+            <!-- Weight categories (fixed — always 2) -->
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">⚖️ Weight Washing Services</div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.82rem;color:var(--ink2);">
+              <strong>Wash & Fold</strong> and <strong>Wash & Iron</strong> are fixed weight-based services. Prices are set in the Weight tab.
+            </div>
+
+            <!-- Special Items categories -->
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">✨ Special Items</div>
+            <div id="catSpecialList" style="margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+              <input type="text" id="newCatSPName" placeholder="e.g. Batakari, School Uniform..." style="flex:1;min-width:160px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;">
+              <input type="number" id="newCatSPPrice" placeholder="Price (GH₵)" min="0" step="0.5" style="width:120px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;text-align:center;">
+              <button class="btn btn-primary btn-sm" onclick="catAddSP()">+ Add</button>
+            </div>
+
+            <!-- Bedding categories -->
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🛏️ Bedding & Curtains</div>
+            <div id="catBeddingList" style="margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+              <input type="text" id="newCatBDName" placeholder="e.g. Duvet Cover, Pillow Case..." style="flex:1;min-width:160px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;">
+              <input type="text" id="newCatBDUnit" placeholder="Unit (per pair...)" style="width:130px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;">
+              <input type="number" id="newCatBDPrice" placeholder="Price (GH₵)" min="0" step="0.5" style="width:120px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;text-align:center;">
+              <button class="btn btn-primary btn-sm" onclick="catAddBD()">+ Add</button>
+            </div>
+
+            <!-- Treatments categories -->
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🧪 Treatments & Add-ons</div>
+            <div id="catTreatList" style="margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+              <input type="text" id="newCatTRName" placeholder="e.g. Bleaching, Fabric Starch..." style="flex:1;min-width:160px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;">
+              <input type="text" id="newCatTRUnit" placeholder="Unit (flat fee, per kg...)" style="width:150px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;">
+              <input type="number" id="newCatTRPrice" placeholder="Price (GH₵)" min="0" step="0.5" style="width:120px;padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.86rem;outline:none;text-align:center;">
+              <button class="btn btn-primary btn-sm" onclick="catAddTR()">+ Add</button>
+            </div>
+          </div>
+          <div class="ptab-pane" id="pp-loyalty">
+            <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">Set automatic discount rules for loyal customers. Discount applies at order creation when the customer qualifies.</p>
+            <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:10px;padding:16px;max-width:500px;margin-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="checkbox" id="loyaltyEnabled" style="width:16px;height:16px;accent-color:var(--accent);" onchange="saveLoyalty()">
+                <label for="loyaltyEnabled" style="font-weight:600;font-size:.9rem;cursor:pointer;">Enable Loyalty Discount</label>
+              </div>
+              <div class="form-grid" style="margin-bottom:10px;">
+                <div class="fg"><label>Qualify After (orders)</label><input type="number" id="loyaltyOrders" min="1" value="5" placeholder="e.g. 5" oninput="saveLoyalty()"></div>
+                <div class="fg"><label>Discount (%)</label><input type="number" id="loyaltyPct" min="1" max="50" value="5" placeholder="e.g. 5" oninput="saveLoyalty()"></div>
+              </div>
+              <div class="fg" style="max-width:280px;">
+                <label>OR qualify after total spend (GH₵)</label>
+                <input type="number" id="loyaltySpend" min="0" value="0" placeholder="0 = disabled" oninput="saveLoyalty()">
+              </div>
+            </div>
+            <div style="font-size:.82rem;color:var(--muted);" id="loyaltyPreview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPENDITURE -->
+      <div class="a-page" id="ap-expenditure">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Log Expenditure</div>
+          <div class="form-grid g3" style="margin-bottom:10px;">
+            <div class="fg"><label>Branch</label><select id="expBranch"></select></div>
+            <div class="fg"><label>Category</label><select id="expCat"><option>Detergent / Chemicals</option><option>Water / Utilities</option><option>Rider Fees</option><option>Equipment Maintenance</option><option>Staff Allowances</option><option>Miscellaneous</option></select></div>
+            <div class="fg"><label>Description</label><input type="text" id="expDesc" placeholder="e.g. Omo 5kg"></div>
+          </div>
+          <div class="form-grid" style="max-width:400px;margin-bottom:10px;">
+            <div class="fg"><label>Amount (GH₵)</label><input type="number" id="expAmt" min="0" step="0.5" placeholder="0.00"></div>
+            <div class="fg"><label>Date</label><input type="date" id="expDate"></div>
+          </div>
+          <button class="btn btn-primary" onclick="logExp()">+ Log Expense</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Expenditure Log</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Branch</th><th>Category</th><th>Description</th><th>Amount</th><th>By</th><th>Actions</th></tr></thead><tbody id="expBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- REPORTS -->
+      <div class="a-page" id="ap-reports">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Generate Report</div>
+          <div class="form-grid" style="max-width:600px;margin-bottom:12px;">
+            <div class="fg"><label>From</label><input type="date" id="rptFrom"></div>
+            <div class="fg"><label>To</label><input type="date" id="rptTo"></div>
+            <div class="fg"><label>Branch</label><select id="rptBranch"><option value="all">All Branches</option></select></div>
+            <div class="fg"><label>Group By</label><select id="rptGroup"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select></div>
+          </div>
+          <button class="btn btn-primary" onclick="genReport()">📊 Generate</button>
+          <button class="btn btn-ghost" style="margin-left:8px;" onclick="printReport()">🖨 Print</button>
+          <button class="btn btn-ghost" style="margin-left:8px;" onclick="exportOrdersCSV()">⬇️ Export Orders CSV</button>
+          <button class="btn btn-ghost" style="margin-left:8px;" onclick="exportExpCSV()">⬇️ Export Expenses CSV</button>
+        </div>
+        <div id="reportOut"></div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="a-page" id="ap-analytics">
+        <!-- Monthly P&L Summary -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">📅 Monthly P&L Summary</div>
+            <div style="display:flex;gap:8px;">
+              <select id="anlMonth" onchange="renderAnalytics()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;background:#fff;"></select>
+              <select id="anlYear" onchange="renderAnalytics()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;background:#fff;"></select>
+            </div>
+          </div>
+          <div id="monthlyPL"></div>
+        </div>
+
+        <!-- Branch Comparison -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">🏪 Branch Comparison</div>
+          <div class="tbl-wrap"><table class="tbl" id="branchCompTable">
+            <thead><tr><th>Branch</th><th>Orders</th><th>Revenue</th><th>Avg Order</th><th>Unpaid</th><th>Unpaid Value</th><th>Active Orders</th></tr></thead>
+            <tbody id="branchCompBody"></tbody>
+          </table></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <!-- Peak Days -->
+          <div class="card">
+            <div class="card-title">📆 Orders by Day of Week</div>
+            <div id="peakDaysChart"></div>
+          </div>
+          <!-- Peak Hours -->
+          <div class="card">
+            <div class="card-title">🕐 Orders by Hour of Day</div>
+            <div id="peakHoursChart"></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <!-- Item Popularity -->
+          <div class="card">
+            <div class="card-title">🏆 Most Popular Items / Services</div>
+            <div id="itemPopChart"></div>
+          </div>
+          <!-- Staff Performance -->
+          <div class="card">
+            <div class="card-title">👥 Staff Performance (This Week)</div>
+            <div id="staffPerfTable"></div>
+          </div>
+        </div>
+
+        <!-- VIP Customers -->
+        <div class="card">
+          <div class="card-title">⭐ VIP Customers — Top 10 by Spend</div>
+          <div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>Rank</th><th>Name</th><th>Phone</th><th>Orders</th><th>Total Spent</th><th>Last Order</th><th>Status</th></tr></thead>
+            <tbody id="vipBody"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- SUPPLIES -->
+      <div class="a-page" id="ap-supplies">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">➕ Add Supply Item</div>
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="fg"><label>Item Name *</label><input type="text" id="supName" placeholder="e.g. Omo Detergent, Comfort Softener"></div>
+            <div class="fg"><label>Category</label>
+              <select id="supCat">
+                <option>Detergent / Chemicals</option>
+                <option>Equipment</option>
+                <option>Packaging</option>
+                <option>Utilities</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg" style="margin-bottom:12px;max-width:300px;"><label>Branch</label><select id="supBranch"></select></div>
+          <button class="btn btn-primary btn-sm" onclick="addSupplyItem()">+ Add Item</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🧴 Supply Levels</div>
+          <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">Update stock levels regularly. Critical items are flagged on the dashboard.</p>
+          <div id="suppliesList"></div>
+        </div>
+      </div>
+
+      <!-- RIDERS -->
+      <div class="a-page" id="ap-riders">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Add Rider</div>
+          <div class="form-grid" style="max-width:500px;margin-bottom:10px;">
+            <div class="fg"><label>Rider Name</label><input type="text" id="riderName2" placeholder="e.g. Kweku Mensah"></div>
+            <div class="fg"><label>Phone</label><input type="tel" id="riderPhone" placeholder="0244123456"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addRider()">+ Add Rider</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Rider Performance</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Phone</th><th>Deliveries</th><th>Completed</th><th>Rate</th><th>Actions</th></tr></thead><tbody id="riderBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- BRANCHES -->
+      <div class="a-page" id="ap-branches">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Add Branch</div>
+          <div class="form-grid" style="max-width:500px;margin-bottom:10px;">
+            <div class="fg"><label>Branch Name *</label><input type="text" id="branchName" placeholder="e.g. Bankyim Pickup Point"></div>
+            <div class="fg"><label>Location / Area</label><input type="text" id="branchLoc" placeholder="e.g. Bankyim, Tarkwa"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addBranch()">+ Create Branch</button>
+        </div>
+        <div class="card">
+          <div class="card-title">All Branches</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Location</th><th>Status</th><th>Orders</th><th>Created</th><th>Actions</th></tr></thead><tbody id="branchBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- STAFF -->
+      <div class="a-page" id="ap-staff">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Add Staff Member</div>
+          <div class="form-grid" style="max-width:600px;margin-bottom:10px;">
+            <div class="fg"><label>Full Name</label><input type="text" id="staffName" placeholder="e.g. Abena Owusu"></div>
+            <div class="fg"><label>Role</label><select id="staffRole"><option>Attendant</option><option>Supervisor</option><option>Rider</option></select></div>
+            <div class="fg"><label>4-Digit PIN</label><input type="text" id="staffPin" maxlength="4" placeholder="1234"></div>
+            <div class="fg"><label>Assign Branch</label><select id="staffBranch"></select></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addStaff()">+ Add Staff</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Staff List</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>PIN</th><th>Actions</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- DEBT TRACKER -->
+      <div class="a-page" id="ap-debttracker">
+        <div class="card">
+          <div class="card-title">💳 Debt Tracker</div>
+          <div class="board-bar">
+            <input type="text" class="search-input" id="debtSearch" placeholder="🔍 Search customer..." oninput="renderDebtTracker()">
+          </div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Phone</th><th>Orders</th><th>Outstanding</th><th>Last Order</th><th>Actions</th></tr></thead><tbody id="debtBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- PROMO CODES -->
+      <div class="a-page" id="ap-promos">
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title">🎟️ Create Promo Code</div>
+          <div class="form-grid">
+            <div class="fg"><label>Code *</label><input type="text" id="promo-code" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()"></div>
+            <div class="fg"><label>Discount %</label><input type="number" id="promo-pct" min="1" max="100" value="10"></div>
+            <div class="fg"><label>Expires</label><input type="date" id="promo-exp"></div>
+            <div class="fg"><label>Max Uses (0=unlimited)</label><input type="number" id="promo-max" value="0" min="0"></div>
+          </div>
+          <div class="fg"><label>Description</label><input type="text" id="promo-desc" placeholder="e.g. New customer discount"></div>
+          <button class="btn btn-primary" onclick="createPromo()">+ Create Promo</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Active Promo Codes</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th><th>Discount</th><th>Expires</th><th>Used</th><th>Status</th><th>Actions</th></tr></thead><tbody id="promoBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- PETTY CASH -->
+      <div class="a-page" id="ap-pettycash">
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title">🪙 Log Petty Cash</div>
+          <div class="form-grid">
+            <div class="fg"><label>Branch</label><select id="pc-branch"></select></div>
+            <div class="fg"><label>Amount (GH₵)</label><input type="number" id="pc-amt" min="0" step="0.50" placeholder="0.00"></div>
+            <div class="fg"><label>Purpose *</label><input type="text" id="pc-purpose" placeholder="e.g. Detergent, Transport..."></div>
+            <div class="fg"><label>Date</label><input type="date" id="pc-date"></div>
+          </div>
+          <button class="btn btn-primary" onclick="logPettyCash()">+ Log</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Petty Cash Log</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Branch</th><th>Purpose</th><th>Amount</th><th>By</th><th></th></tr></thead><tbody id="pcBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CASH FLOAT -->
+      <div class="a-page" id="ap-float">
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title">💵 Set Branch Float</div>
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">Set the opening cash float for each branch at the start of each shift.</p>
+          <div class="form-grid">
+            <div class="fg"><label>Branch</label><select id="fl-branch"></select></div>
+            <div class="fg"><label>Float Amount (GH₵)</label><input type="number" id="fl-amt" min="0" step="5" placeholder="0.00"></div>
+            <div class="fg"><label>Date</label><input type="date" id="fl-date"></div>
+          </div>
+          <button class="btn btn-primary" onclick="setFloat()">💾 Set Float</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Float History</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Branch</th><th>Float</th><th>Cash In</th><th>Variance</th><th>By</th></tr></thead><tbody id="floatBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- TURNAROUND TIME -->
+      <div class="a-page" id="ap-turnaround">
+        <div class="card">
+          <div class="card-title">⏱️ Turnaround Time Analysis</div>
+          <div class="form-grid" style="margin-bottom:14px;max-width:400px;">
+            <div class="fg"><label>From</label><input type="date" id="tat-from" onchange="renderTurnaround()"></div>
+            <div class="fg"><label>To</label><input type="date" id="tat-to" onchange="renderTurnaround()"></div>
+          </div>
+          <div id="tatContent"></div>
+        </div>
+      </div>
+
+      <!-- COMPLAINTS ADMIN -->
+      <div class="a-page" id="ap-complaints">
+        <div class="card">
+          <div class="card-title">⚠️ Complaints Log</div>
+          <div class="board-bar">
+            <div class="ftabs">
+              <div class="ftab active" onclick="setCompFilter('all',this)">All</div>
+              <div class="ftab" onclick="setCompFilter('open',this)">Open</div>
+              <div class="ftab" onclick="setCompFilter('resolved',this)">Resolved</div>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Order</th><th>Customer</th><th>Type</th><th>Issue</th><th>Branch</th><th>Status</th><th>Actions</th></tr></thead><tbody id="aCompBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- RIDER TRIPS -->
+      <div class="a-page" id="ap-ridertrips">
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title">🛵 Log Rider Trip</div>
+          <div class="form-grid">
+            <div class="fg"><label>Rider</label><select id="rt-rider"></select></div>
+            <div class="fg"><label>Order ID</label><input type="text" id="rt-order" placeholder="NL-2026-..."></div>
+            <div class="fg"><label>From Branch</label><select id="rt-branch"></select></div>
+            <div class="fg"><label>Delivery Fee (GH₵)</label><input type="number" id="rt-fee" min="0" step="0.50" placeholder="0.00"></div>
+            <div class="fg"><label>Date</label><input type="date" id="rt-date"></div>
+          </div>
+          <button class="btn btn-primary" onclick="logRiderTrip()">+ Log Trip</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Trip Log</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Rider</th><th>Order</th><th>Branch</th><th>Fee</th><th>By</th><th></th></tr></thead><tbody id="rtBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- APPROVALS -->
+      <div class="a-page" id="ap-approvals">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title">✅ Pending Approvals</div>
+          <div id="approvalsBody"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Approval Audit Log</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Type</th><th>Item</th><th>Requested By</th><th>Reason</th><th>Actioned By</th><th>Decision</th><th>Date</th></tr></thead><tbody id="auditBody"></tbody></table></div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+<!-- EDIT CATEGORY ITEM MODAL -->
+<div class="modal-ov" id="editCatModal" style="display:none">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" id="editCatTitle">✏️ Edit Item</div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div class="fg"><label>Name</label><input type="text" id="editCatName" placeholder="Item name"></div>
+      <div class="fg"><label>Price (GH₵)</label><input type="number" id="editCatPrice" min="0" step="0.5" placeholder="0.00"></div>
+    </div>
+    <div class="fg" style="margin-bottom:14px;" id="editCatUnitWrap">
+      <label>Unit label</label>
+      <input type="text" id="editCatUnit" placeholder="e.g. per piece, per pair, flat fee">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('editCatModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditCat()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK WHATSAPP MODAL -->
+<div class="modal-ov" id="bulkWAModal" style="display:none">
+  <div class="modal wide">
+    <div class="modal-title">📣 Notify Customers — Ready Orders</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">All orders currently marked <strong>Ready for Collection</strong>. Send via WhatsApp, SMS, or Email — tap any button to open the app.</p>
+    <div id="bulkWAList"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('bulkWAModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- PIN CHANGE MODAL -->
+<div class="modal-ov" id="pinChangeModal" style="display:none">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title">🔑 Change PIN</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;" id="pinChangeSubtitle">Enter your current PIN and choose a new 4-digit PIN.</p>
+    <div class="fg" style="margin-bottom:10px;" id="currentPinWrap">
+      <label>Current PIN</label>
+      <input type="password" id="currentPin" maxlength="4" placeholder="Current 4-digit PIN" inputmode="numeric">
+    </div>
+    <div class="fg" style="margin-bottom:10px;">
+      <label>New PIN</label>
+      <input type="password" id="newPin" maxlength="4" placeholder="New 4-digit PIN" inputmode="numeric">
+    </div>
+    <div class="fg" style="margin-bottom:14px;">
+      <label>Confirm New PIN</label>
+      <input type="password" id="confirmPin" maxlength="4" placeholder="Repeat new PIN" inputmode="numeric">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="submitPINChange()">✓ Update PIN</button>
+    <div class="login-err" id="pinChangeErr" style="margin-top:8px;"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('pinChangeModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- ORDER SUCCESS MODAL -->
+<div class="modal-ov" id="successModal" style="display:none">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <div style="font-size:3rem;margin-bottom:6px;">✅</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;margin-bottom:14px;">Order Created!</div>
+    <div style="background:var(--accent-l);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:18px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent);" id="sc-orderId">—</div>
+      <div style="font-size:.86rem;color:var(--ink2);margin-top:5px;" id="sc-custName">—</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-top:3px;" id="sc-total">—</div>
+      <div style="font-size:.76rem;color:var(--muted);margin-top:3px;" id="sc-payinfo">—</div>
+      <div style="font-size:.76rem;color:var(--muted);margin-top:1px;" id="sc-branch">—</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <button class="btn btn-primary btn-full" style="padding:13px;font-size:.95rem;" onclick="printAndClose()">🖨 Print Receipt</button>
+      <button class="btn btn-secondary btn-full" onclick="closeSuccessModal()">Skip — Start New Order</button>
+    </div>
+  </div>
+</div>
+<!-- Status Modal -->
+<div class="modal-ov" id="statusModal" style="display:none">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">📋 Update Order Status</div>
+    <div style="font-size:.84rem;color:var(--muted);margin-bottom:8px;">Order: <span id="sm-id" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700;"></span></div>
+    <div style="font-size:.88rem;margin-bottom:6px;">Customer: <strong id="sm-cust"></strong></div>
+    <div style="font-size:.84rem;margin-bottom:16px;">Balance due: <strong id="sm-bal" style="color:var(--accent2);"></strong></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="sm-btns"></div>
+    <div id="sm-collect-form" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-weight:600;font-size:.86rem;margin-bottom:10px;">✅ Confirm Collection</div>
+      <div id="sm-balance-warning" style="display:none;background:var(--accent2-l);border:1.5px solid var(--accent2);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;">
+        ⚠️ <strong>Outstanding balance: <span id="sm-bal-amount" style="color:var(--accent2);"></span></strong><br>
+        <span style="font-size:.78rem;color:var(--ink2);">Confirm you have collected this amount before releasing the laundry.</span>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="sm-bal-confirm" style="width:16px;height:16px;accent-color:var(--accent2);">
+          <label for="sm-bal-confirm" style="font-size:.8rem;font-weight:600;cursor:pointer;">I confirm payment has been collected</label>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:10px;"><label>Collected by (name or phone)</label><input type="text" id="sm-collector" placeholder="Customer name or representative"></div>
+      <div class="fg" style="margin-bottom:10px;" id="sm-final-pay-wrap">
+        <label>Final Payment Received (GH₵)</label>
+        <input type="number" id="sm-final-pay" min="0" step="0.50" placeholder="0.00">
+      </div>
+      <div class="fg" style="margin-bottom:12px;">
+        <label>Collection Notes (optional)</label>
+        <textarea id="sm-collect-notes" placeholder="e.g. Customer satisfied, small stain remained on shirt, will return next week..." style="min-height:56px;"></textarea>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="confirmCollection()">✓ Confirm Collection</button>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('statusModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- View Order Modal -->
+<div class="modal-ov" id="viewModal" style="display:none">
+  <div class="modal dark-modal" style="max-width:480px;">
+    <div id="viewModalContent"></div>
+    <!-- Notification Panel -->
+    <div id="notifPanel" style="margin-top:14px;border-top:1px solid rgba(255,255,255,.1);padding-top:14px;display:none;">
+      <div style="font-size:.7rem;letter-spacing:1.5px;text-transform:uppercase;color:#4a7a58;font-weight:700;margin-bottom:8px;">📣 Notify Customer</div>
+      <div style="margin-bottom:8px;">
+        <div style="font-size:.72rem;color:#5a8a6a;margin-bottom:4px;">Status update message:</div>
+        <select id="notifStatusSel" onchange="refreshNotifPreview()" style="width:100%;padding:8px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:8px;color:#d0dcd4;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;">
+          <option value="pending">📋 Order Received</option>
+          <option value="washing">🔵 Now Washing</option>
+          <option value="ready">✅ Ready for Collection</option>
+          <option value="delivery">🛵 Out for Delivery</option>
+          <option value="collected">📦 Collected — Thank You</option>
+        </select>
+      </div>
+      <div class="notif-preview-box" id="notifPreviewBox"></div>
+      <div class="notif-channel-row">
+        <a id="notifWABtn" href="#" target="_blank" class="btn btn-whatsapp btn-sm">💬 WhatsApp</a>
+        <a id="notifSMSBtn" href="#" class="btn btn-sms btn-sm">✉️ SMS</a>
+        <a id="notifEmailBtn" href="#" class="btn btn-email btn-sm">📧 Email</a>
+        <button class="btn btn-ghost btn-sm" onclick="copyNotifMsg()" style="color:#c8d8cc;border-color:rgba(255,255,255,.2);" id="notifCopyBtn">📋 Copy</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="btn btn-ghost" style="color:#c8d8cc;border-color:rgba(255,255,255,.2);" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer History Modal -->
+<div class="modal-ov" id="custHistModal" style="display:none">
+  <div class="modal wide">
+    <div class="modal-title">👤 Customer History</div>
+    <div id="custHistContent"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('custHistModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- Edit Order Modal -->
+<div class="modal-ov" id="editModal" style="display:none">
+  <div class="modal wide">
+    <div class="modal-title">✏️ Edit Order</div>
+    <div id="editModalContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrderEdit()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN MOBILE BOTTOM NAV ═══ -->
+<div id="adminBottomNav">
+  <button class="abn-item active" onclick="mobileNav('dashboard',this)"><span class="abn-ic">📊</span>Dash</button>
+  <button class="abn-item" onclick="mobileNav('orders',this)"><span class="abn-ic">📋</span>Orders</button>
+  <button class="abn-item" onclick="mobileNav('customers',this)"><span class="abn-ic">👤</span>Customers</button>
+  <button class="abn-item" onclick="mobileNav('analytics',this)"><span class="abn-ic">🧠</span>Analytics</button>
+  <button class="abn-item" id="moreBtn" onclick="toggleMorePanel()"><span class="abn-ic">⋯</span>More</button>
+</div>
+<div class="abn-more-panel" id="abnMorePanel">
+  <div class="abn-more-item" onclick="mobileNav('pricing');toggleMorePanel()"><span style="font-size:1.2rem;">💰</span>Pricing</div>
+  <div class="abn-more-item" onclick="mobileNav('expenditure');toggleMorePanel()"><span style="font-size:1.2rem;">💸</span>Expenses</div>
+  <div class="abn-more-item" onclick="mobileNav('reports');toggleMorePanel()"><span style="font-size:1.2rem;">📈</span>Reports</div>
+  <div class="abn-more-item" onclick="mobileNav('riders');toggleMorePanel()"><span style="font-size:1.2rem;">🛵</span>Riders</div>
+  <div class="abn-more-item" onclick="mobileNav('branches');toggleMorePanel()"><span style="font-size:1.2rem;">🏪</span>Branches</div>
+  <div class="abn-more-item" onclick="mobileNav('supplies');toggleMorePanel()"><span style="font-size:1.2rem;">🧴</span>Supplies</div>
+  <div class="abn-more-item" onclick="mobileNav('staff');toggleMorePanel()"><span style="font-size:1.2rem;">👥</span>Staff</div>
+  <div class="abn-more-item" onclick="logout()" style="color:#e07060;"><span style="font-size:1.2rem;">🚪</span>Logout</div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
 // ══════════════════════════════════════════════════════
 // DATA STORE
 // ══════════════════════════════════════════════════════
@@ -2356,6 +3505,7 @@ function staffStartOrderFor(id){
 // SUPERVISOR EXPENDITURE
 // ══════════════════════════════════════════════════════
 function supervisorLogExp(){
+  if(!CU){showNotif('Not logged in.','err');return;}
   const cat=document.getElementById('sExpCat').value;
   const desc=document.getElementById('sExpDesc').value.trim();
   const amt=parseFloat(document.getElementById('sExpAmt').value);
@@ -4458,6 +5608,8 @@ document.addEventListener('click',e=>{
   await initFirebase();
   await load();
   buildLogin();
+})();
+
 
 
 // ══════════════════════════════════════════════════════
@@ -4633,6 +5785,7 @@ function renderDebtTracker(){
 // V5A — PETTY CASH
 // ══════════════════════════════════════════════════════
 function logPettyCash(){
+  if(!CU){showNotif('Not logged in.','err');return;}
   const branch=document.getElementById('pc-branch')?.value;
   const amt=parseFloat(document.getElementById('pc-amt')?.value)||0;
   const purpose=(document.getElementById('pc-purpose')?.value||'').trim();
@@ -4661,6 +5814,7 @@ function delPettyCash(id){DB.pettyCash=DB.pettyCash.filter(e=>e.id!==id);saveSet
 // V5A — CASH FLOAT
 // ══════════════════════════════════════════════════════
 function setFloat(){
+  if(!CU){showNotif('Not logged in.','err');return;}
   const branch=document.getElementById('fl-branch')?.value;
   const amt=parseFloat(document.getElementById('fl-amt')?.value)||0;
   const date=document.getElementById('fl-date')?.value||new Date().toISOString().split('T')[0];
@@ -4723,6 +5877,7 @@ let compFilter='all';
 function setCompFilter(f,el){compFilter=f;document.querySelectorAll('#ap-complaints .ftab').forEach(t=>t.classList.remove('active'));if(el)el.classList.add('active');renderAdminComplaints();}
 
 function staffLogComplaint(){
+  if(!CU){showNotif('Not logged in.','err');return;}
   const orderId=(document.getElementById('comp-order')?.value||'').trim();
   const type=document.getElementById('comp-type')?.value||'other';
   const cust=(document.getElementById('comp-cust')?.value||'').trim();
@@ -4769,6 +5924,7 @@ function delComplaint(id){DB.complaints=DB.complaints.filter(c=>c.id!==id);saveS
 // V5A — RIDER TRIPS
 // ══════════════════════════════════════════════════════
 function logRiderTrip(){
+  if(!CU){showNotif('Not logged in.','err');return;}
   const riderId=document.getElementById('rt-rider')?.value;
   const orderId=(document.getElementById('rt-order')?.value||'').trim();
   const branchId=document.getElementById('rt-branch')?.value;
@@ -5063,7 +6219,6 @@ document.addEventListener('click',e=>{
   const mb=document.getElementById('moreBtn');
   if(mp&&mb&&!mp.contains(e.target)&&!mb.contains(e.target))mp.classList.remove('open');
 });
-})();
 </script>
 
 <!-- ADMIN MOBILE BOTTOM NAV -->
