@@ -3023,12 +3023,11 @@ function isOverdue(o){
 }
 function renderBoard(){
   const q=(document.getElementById('boardSearch')?.value||'').toLowerCase();
-  // Supervisors see ALL branches; Attendants see only their branch
   const isSupervisor=CU?.roleLabel==='Supervisor';
   const myBranch=CU?._loginBranch||'';
   let orders=isSupervisor
-    ? DB.orders  // supervisor sees everything
-    : DB.orders.filter(o=>o.branchId===myBranch); // attendant sees own branch
+    ? DB.orders
+    : DB.orders.filter(o=>o.branchId===myBranch);
   orders=orders.filter(o=>{
     const m=o.id.toLowerCase().includes(q)||o.customerName.toLowerCase().includes(q)||(o.customerPhone||'').includes(q);
     const f=boardFilter==='all'||(boardFilter==='overdue'?isOverdue(o):o.status===boardFilter);
@@ -3036,25 +3035,31 @@ function renderBoard(){
     return m&&f&&d;
   });
   const tbody=document.getElementById('boardBody');if(!tbody)return;
-  if(!orders.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="ei">🧺</div><p>No orders found.</p></div></td></tr>`;return;}
+  if(!orders.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty"><div class="ei">🧺</div><p>No orders found.</p></div></td></tr>';return;}
   tbody.innerHTML=orders.map(o=>{
     const od=isOverdue(o);
-    return`<tr class="${od?'overdue-row':''}">
-      <td><span class="oid">${o.id}</span>${od?'<div class="overdue-flag">⚠️ OVERDUE</div>':''}</td>
-      <td><strong>${o.customerName}</strong></td>
-      <td>${o.customerPhone||'—'}</td>
-      <td style="font-size:.76rem;max-width:160px;">${orderSum(o)}</td>
-      <td><strong>GH₵${o.total.toFixed(2)}</strong></td>
-      <td>${payBadge(o.payStatus)}${o.balanceDue>0?`<div style="font-size:.7rem;color:var(--accent2);">Bal: GH₵${o.balanceDue.toFixed(2)}</div>`:''}</td>
-      <td>${statusBadge(o.status)}</td>
-      <td style="font-size:.74rem;color:var(--muted);">${fmtDate(o.createdAt)}</td>
-      <td><div class="tbl-actions">
-        <button class="btn btn-sm btn-secondary" onclick="openStatusModal('${o.id}')">Update</button>
-        <button class="btn btn-sm btn-primary" onclick="viewOrder('${o.id}')">View</button>
-        ${CU?.roleLabel==='Supervisor'?`<button class="btn btn-xs btn-warning" onclick="requestDeletion('order','${o.id}','${o.id}')">🗑</button>`:''}
-      </div></td>
-    </tr>`;}).join('');
+    const balDiv=o.balanceDue>0?'<div style="font-size:.7rem;color:var(--accent2);">Bal: GH&#x20B5;'+o.balanceDue.toFixed(2)+'</div>':'';
+    const delBtn=isSupervisor
+      ? '<button class="btn btn-xs btn-warning" onclick="requestDeletion(\'order\',\''+o.id+'\',\''+o.id+'\')">🗑</button>'
+      : '';
+    return '<tr class="'+(od?'overdue-row':'')+'">'
+      +'<td><span class="oid">'+o.id+'</span>'+(od?'<div class="overdue-flag">⚠️ OVERDUE</div>':'')+'</td>'
+      +'<td><strong>'+o.customerName+'</strong></td>'
+      +'<td>'+(o.customerPhone||'—')+'</td>'
+      +'<td style="font-size:.76rem;max-width:160px;">'+orderSum(o)+'</td>'
+      +'<td><strong>GH&#x20B5;'+o.total.toFixed(2)+'</strong></td>'
+      +'<td>'+payBadge(o.payStatus)+balDiv+'</td>'
+      +'<td>'+statusBadge(o.status)+'</td>'
+      +'<td style="font-size:.74rem;color:var(--muted);">'+fmtDate(o.createdAt)+'</td>'
+      +'<td><div class="tbl-actions">'
+      +'<button class="btn btn-sm btn-secondary" onclick="openStatusModal(\''+o.id+'\')">Update</button>'
+      +'<button class="btn btn-sm btn-primary" onclick="viewOrder(\''+o.id+'\')">View</button>'
+      +delBtn
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
 }
+
 function checkOverdue(){
   const n=DB.orders.filter(o=>isOverdue(o)&&o.status!=='collected').length;
   const el=document.getElementById('overdueCount');
