@@ -1785,7 +1785,7 @@ async function initFirebase(){
   }
   try {
     if(!firebase.apps.length){
-      firebase.initializeApp(FIREBASE_CONFIG);
+      firebase.initializeApp(firebaseConfig);
     }
     const fsDb = firebase.firestore();
     // Set up window._fb bridge matching the pattern save functions expect
