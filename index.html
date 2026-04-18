@@ -2191,7 +2191,13 @@ function doLogin(){
   if(u.role==='admin'){
     CU._loginBranch=document.getElementById('loginBranch').value;
   } else {
-    CU._loginBranch=u.branchId||document.getElementById('loginBranch').value;
+    // Staff always locked to their assigned branch
+    // If no branch assigned (data issue), use selected branch from dropdown
+    CU._loginBranch=u.branchId||document.getElementById('loginBranch').value||'b1';
+    // Fix data: save branchId back to user if missing
+    if(!u.branchId && CU._loginBranch){
+      u.branchId=CU._loginBranch;
+    }
   }
   const ls=document.getElementById('loginScreen');if(ls){ls.style.display='none';}
   // Ensure both apps are fully reset before launching correct one
@@ -2305,6 +2311,7 @@ function renderStaffCustomers(){
       <td><div class="tbl-actions">
         <button class="btn btn-xs btn-secondary" onclick="staffViewCustHistory('${c.id}')">History</button>
         <button class="btn btn-xs btn-primary" onclick="staffStartOrderFor('${c.id}')">New Order</button>
+        ${CU?.roleLabel==='Supervisor'?`<button class="btn btn-xs btn-warning" onclick="requestDeletion('customer','${c.id}','${c.name.replace(/'/g,"\\'")}')">🗑 Del Request</button>`:''}
       </div></td>
     </tr>`).join('');
 }
@@ -3010,7 +3017,9 @@ function isOverdue(o){
 }
 function renderBoard(){
   const q=(document.getElementById('boardSearch')?.value||'').toLowerCase();
-  let orders=DB.orders.filter(o=>o.branchId===CU?._loginBranch);
+  // Staff/Supervisor always see only their branch - never all branches
+  const myBranch=CU?._loginBranch||'';
+  let orders=DB.orders.filter(o=>o.branchId===myBranch);
   orders=orders.filter(o=>{
     const m=o.id.toLowerCase().includes(q)||o.customerName.toLowerCase().includes(q)||(o.customerPhone||'').includes(q);
     const f=boardFilter==='all'||(boardFilter==='overdue'?isOverdue(o):o.status===boardFilter);
@@ -3033,6 +3042,7 @@ function renderBoard(){
       <td><div class="tbl-actions">
         <button class="btn btn-sm btn-secondary" onclick="openStatusModal('${o.id}')">Update</button>
         <button class="btn btn-sm btn-primary" onclick="viewOrder('${o.id}')">View</button>
+        ${CU?.roleLabel==='Supervisor'?`<button class="btn btn-xs btn-warning" onclick="requestDeletion('order','${o.id}','${o.id}')">🗑</button>`:''}
       </div></td>
     </tr>`;}).join('');
 }
