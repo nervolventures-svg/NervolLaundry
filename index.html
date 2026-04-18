@@ -3017,9 +3017,12 @@ function isOverdue(o){
 }
 function renderBoard(){
   const q=(document.getElementById('boardSearch')?.value||'').toLowerCase();
-  // Staff/Supervisor always see only their branch - never all branches
+  // Supervisors see ALL branches; Attendants see only their branch
+  const isSupervisor=CU?.roleLabel==='Supervisor';
   const myBranch=CU?._loginBranch||'';
-  let orders=DB.orders.filter(o=>o.branchId===myBranch);
+  let orders=isSupervisor
+    ? DB.orders  // supervisor sees everything
+    : DB.orders.filter(o=>o.branchId===myBranch); // attendant sees own branch
   orders=orders.filter(o=>{
     const m=o.id.toLowerCase().includes(q)||o.customerName.toLowerCase().includes(q)||(o.customerPhone||'').includes(q);
     const f=boardFilter==='all'||(boardFilter==='overdue'?isOverdue(o):o.status===boardFilter);
@@ -3216,10 +3219,17 @@ function viewOrder(id){
 // SHIFT HANDOVER
 // ══════════════════════════════════════════════════════
 function renderShift(){
-  document.getElementById('shiftBranch').textContent=branchName(CU?._loginBranch||'b1');
-  document.getElementById('shiftStaff').textContent=CU?.name||'—';
+  const isSupervisor=CU?.roleLabel==='Supervisor';
+  const branchEl=document.getElementById('shiftBranch');
+  if(branchEl)branchEl.textContent=isSupervisor?'All Branches':branchName(CU?._loginBranch||'b1');
+  const staffEl=document.getElementById('shiftStaff');
+  if(staffEl)staffEl.textContent=CU?.name||'—';
   const today=new Date().toDateString();
-  const myOrders=DB.orders.filter(o=>o.branchId===CU?._loginBranch&&new Date(o.createdAt).toDateString()===today);
+  // Supervisors see all branches; Attendants see only their branch
+  const myOrders=DB.orders.filter(o=>
+    (isSupervisor||o.branchId===CU?._loginBranch)&&
+    new Date(o.createdAt).toDateString()===today
+  );
   const paidOrders=myOrders.filter(o=>o.payStatus==='paid'||o.payStatus==='partial');
   const expected=myOrders.reduce((s,o)=>s+(o.depositPaid||0)+(o.payStatus==='paid'?o.total:o.depositPaid||0),0);
   const uniqueExpected=myOrders.reduce((s,o)=>s+(o.payStatus==='paid'?o.total:o.payStatus==='partial'?o.depositPaid||0:0),0);
@@ -3240,7 +3250,7 @@ function renderShift(){
   });
   // Log
   const tbody=document.getElementById('shiftLogBody');
-  const log=DB.shifts.filter(s=>s.staffId===CU?.id).slice(0,20);
+  const log=(isSupervisor?DB.shifts:DB.shifts.filter(s=>s.staffId===CU?.id)).slice(0,20);
   tbody.innerHTML=!log.length?`<tr><td colspan="8"><div class="empty"><div class="ei">📋</div><p>No shifts logged yet.</p></div></td></tr>`
     :log.map(s=>{
       const v=s.actual-s.expected;
@@ -3259,11 +3269,15 @@ function submitShift(){
   const actual=parseFloat(document.getElementById('actualCash').value);
   if(isNaN(actual)){showNotif('Enter actual cash amount.','err');return;}
   const today=new Date().toDateString();
-  const myOrders=DB.orders.filter(o=>o.branchId===CU._loginBranch&&new Date(o.createdAt).toDateString()===today);
+  const isSup=CU?.roleLabel==='Supervisor';
+  const myOrders=DB.orders.filter(o=>
+    (isSup||o.branchId===CU._loginBranch)&&
+    new Date(o.createdAt).toDateString()===today
+  );
   const expected=myOrders.reduce((s,o)=>s+(o.payStatus==='paid'?o.total:o.payStatus==='partial'?o.depositPaid||0:0),0);
   const newShift={
     id:'sh'+Date.now(),staffId:CU.id,staffName:CU.name,
-    branchId:CU._loginBranch,date:new Date().toISOString(),
+    branchId:isSup?'all':CU._loginBranch,date:new Date().toISOString(),
     expected,actual,variance:actual-expected,
     orders:myOrders.length,notes:document.getElementById('handoverNotes').value.trim(),
   };
@@ -4769,10 +4783,26 @@ function delRiderTrip(id){DB.riderTrips=DB.riderTrips.filter(t=>t.id!==id);saveS
 // V5A — DELETE APPROVALS WORKFLOW
 // ══════════════════════════════════════════════════════
 function requestDeletion(type, targetId, targetName, reason){
-  if(!reason)reason=prompt(`Reason for deleting "${targetName}"?`);
-  if(!reason)return;
-  DB.deleteRequests.push({id:'dr'+Date.now(),type,targetId,targetName,reason,requestedBy:CU.name,requestedById:CU.id,branchId:CU._loginBranch,status:'pending',createdAt:new Date().toISOString()});
-  saveSettings();updateApprovalsBadge();showNotif('Delete request sent to Admin.','ok');
+  if(!reason){
+    // Use prompt with fallback
+    const r=window.prompt('Reason for deleting ' + targetName + '? (explain to Admin)');
+    if(r===null)return; // cancelled
+    if(!r.trim()){showNotif('Please enter a reason.','err');return;}
+    reason=r.trim();
+  }
+  if(!DB.deleteRequests)DB.deleteRequests=[];
+  DB.deleteRequests.push({
+    id:'dr'+Date.now(),
+    type,targetId,targetName,reason,
+    requestedBy:CU.name,
+    requestedById:CU.id,
+    branchId:CU._loginBranch,
+    status:'pending',
+    createdAt:new Date().toISOString()
+  });
+  saveSettings();
+  updateApprovalsBadge();
+  showNotif('Delete request sent to Admin for approval.','ok');
 }
 function renderApprovals(){
   const body=document.getElementById('approvalsBody');if(!body)return;
