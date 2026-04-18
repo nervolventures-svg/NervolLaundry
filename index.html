@@ -4524,6 +4524,13 @@ function launchStaff(){
     document.getElementById('sExpBranchLabel').textContent = branchName(CU._loginBranch);
     renderSExpBody();
   }
+
+  // v5a additions
+  wirePaymentStatus();
+  updateApprovalsBadge();
+  const isSup=CU.roleLabel==='Supervisor';
+  const expTab=document.getElementById('expTab');
+  if(expTab)expTab.style.display=isSup?'block':'none';
   startClock('sClock');
   checkOverdue();
 }
@@ -4537,6 +4544,8 @@ function showSTab(tab,el){
   if(tab==='board')renderBoard();
   if(tab==='shift')renderShift();
   if(tab==='customers')renderStaffCustomers();
+  if(tab==='quote')initQuoteForm();
+  if(tab==='complaints')renderStaffComplaints();
   if(tab==='expenditure'){renderSExpBody();const lbl=document.getElementById('sExpBranchLabel');if(lbl)lbl.textContent=branchName(CU._loginBranch);}
   }catch(e){console.error('showSTab:',tab,e);}
 }
@@ -5600,6 +5609,9 @@ function launchAdmin(){
   startClock('aClock');
   checkOverdue();
   updateSupplyDashAlert();
+  updateApprovalsBadge();
+  const _initToday=new Date().toISOString().split('T')[0];
+  ['pc-date','fl-date','rt-date'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=_initToday;});
   const today=new Date().toISOString().split('T')[0];
   document.getElementById('expDate').value=today;
   document.getElementById('rptFrom').value=today;
@@ -5626,6 +5638,14 @@ function showAPage(page,el){
     if(page==='customers')renderCustomers();
     if(page==='analytics'){try{initAnalyticsFilters();renderAnalytics();}catch(e){}}
     if(page==='supplies'){try{renderSupplies();}catch(e){}}
+    if(page==='debttracker')renderDebtTracker();
+    if(page==='promos')renderPromos();
+    if(page==='pettycash'){renderPettyCash();const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
+    if(page==='float'){renderFloat();const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
+    if(page==='turnaround'){const today=new Date().toISOString().split('T')[0];const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}if(to&&!to.value)to.value=today;renderTurnaround();}
+    if(page==='complaints')renderAdminComplaints();
+    if(page==='ridertrips'){renderRiderTrips();const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');}
+    if(page==='approvals')renderApprovals();
   }catch(e){console.error('showAPage:',page,e);}
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
@@ -6306,48 +6326,10 @@ function inDateRange(iso, fromId, toId){
 }
 
 // Enhanced smClick with payment warning
-function smClick(status){
-  if(status==='collected'){
-    const o=DB.orders.find(x=>x.id===statusModalOrderId);
-    document.getElementById('sm-collect-form').style.display='block';
-    document.getElementById('sm-collect-notes').value='';
-    const hasBal=o&&o.balanceDue>0;
-    document.getElementById('sm-balance-warning').style.display=hasBal?'block':'none';
-    if(hasBal){
-      document.getElementById('sm-bal-amount').textContent=`GH₵${o.balanceDue.toFixed(2)}`;
-      document.getElementById('sm-bal-confirm').checked=false;
-    }
-    document.getElementById('sm-final-pay-wrap').style.display=hasBal?'block':'none';
-  } else {
-    updateOrderStatus(statusModalOrderId,status);
-    closeModal('statusModal');
-  }
-}
+
 
 // Enhanced confirmCollection with payment gate and notes
-function confirmCollection(){
-  const o=DB.orders.find(x=>x.id===statusModalOrderId);if(!o)return;
-  const collector=document.getElementById('sm-collector').value.trim();
-  if(!collector){showNotif('Enter collector name/phone.','err');return;}
-  // Payment gate
-  if(o.balanceDue>0){
-    if(!document.getElementById('sm-bal-confirm').checked){
-      showNotif('Confirm you have collected the outstanding balance.','err');return;
-    }
-    const finalPay=parseFloat(document.getElementById('sm-final-pay').value)||0;
-    o.depositPaid=(o.depositPaid||0)+finalPay;
-    o.balanceDue=Math.max(0,o.balanceDue-finalPay);
-    if(o.balanceDue===0)o.payStatus='paid';
-  }
-  o.status='collected';
-  o.collectedBy=collector;
-  o.collectedAt=new Date().toISOString();
-  o.collectionNotes=document.getElementById('sm-collect-notes').value.trim();
-  // saved via saveOrder above
-  closeModal('statusModal');renderBoard();checkOverdue();
-  if(typeof renderAOrders==='function')renderAOrders();
-  showNotif(`Order collected by ${collector}`,'ok');
-}
+
 
 // ══════════════════════════════════════════════════════
 // GROUP C — ANALYTICS
@@ -6742,27 +6724,12 @@ document.addEventListener('click',e=>{
 // ══════════════════════════════════════════════════════
 // V5A — HELPER: localSave (always save to localStorage)
 // ══════════════════════════════════════════════════════
-function localSave(){
-  try{localStorage.setItem('nl_v4_backup',JSON.stringify({
-    weightPricing:DB.weightPricing,specialItems:DB.specialItems,beddingItems:DB.beddingItems,
-    treatments:DB.treatments,loyaltySettings:DB.loyaltySettings,supplies:DB.supplies,
-    nextOrderNum:DB.nextOrderNum,riders:DB.riders,branches:DB.branches,users:DB.users,
-    orders:DB.orders.slice(0,100),customers:DB.customers.slice(0,200),
-    expenditures:DB.expenditures.slice(0,200),shifts:DB.shifts.slice(0,50),
-    promos:DB.promos,deleteRequests:DB.deleteRequests,complaints:DB.complaints,
-    riderTrips:DB.riderTrips,pettyCash:DB.pettyCash,floats:DB.floats,
-    quotes:DB.quotes,momoLogs:DB.momoLogs,branchPricing:DB.branchPricing||{}
-  }));}catch(e){}
-}
-function showSyncStatus(m){const el=document.getElementById('syncBar');if(el){el.textContent='🔄 '+m;el.style.display='block';}}
-function hideSyncStatus(){const el=document.getElementById('syncBar');if(el)el.style.display='none';}
-function fmtDate(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
-function fmtDateShort(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en-GH',{day:'2-digit',month:'short'});}catch(e){return d;}}
-function isOverdue(o){
-  if(!['pending','washing','ready'].includes(o.status))return false;
-  const h=(Date.now()-new Date(o.createdAt).getTime())/3600000;
-  return(o.status==='washing'&&h>24)||(o.status==='ready'&&h>48)||(o.status==='pending'&&h>48);
-}
+
+
+
+
+
+
 function updateApprovalsBadge(){
   const n=(DB.deleteRequests||[]).filter(r=>r.status==='pending').length;
   const el=document.getElementById('approvalsBadge');
@@ -6772,47 +6739,12 @@ function updateApprovalsBadge(){
 // ══════════════════════════════════════════════════════
 // V5A — SHOW STAB EXTENSION (quote, complaints)
 // ══════════════════════════════════════════════════════
-const _showSTabBase = showSTab;
-function showSTab(tab, el){
-  _showSTabBase(tab, el);
-  if(tab==='quote') initQuoteForm();
-  if(tab==='complaints') renderStaffComplaints();
-}
+
 
 // ══════════════════════════════════════════════════════
 // V5A — SHOW APAGE EXTENSION
 // ══════════════════════════════════════════════════════
-const _showAPageBase = showAPage;
-function showAPage(page, el){
-  _showAPageBase(page, el);
-  if(page==='debttracker') renderDebtTracker();
-  if(page==='promos') renderPromos();
-  if(page==='pettycash'){
-    renderPettyCash();
-    const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-    const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
-  }
-  if(page==='float'){
-    renderFloat();
-    const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-    const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
-  }
-  if(page==='turnaround'){
-    const today=new Date().toISOString().split('T')[0];
-    const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');
-    if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}
-    if(to&&!to.value)to.value=today;
-    renderTurnaround();
-  }
-  if(page==='complaints') renderAdminComplaints();
-  if(page==='ridertrips'){
-    renderRiderTrips();
-    const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-    const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
-    const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
-  }
-  if(page==='approvals') renderApprovals();
-}
+
 
 // ══════════════════════════════════════════════════════
 // V5A — PAYMENT STATUS (MoMo wire-up in order form)
@@ -7295,24 +7227,8 @@ const CHECK_URL='https://nervollaundry.vercel.app/check';
 // ══════════════════════════════════════════════════════
 // V5A — WIRE UP ON LAUNCH
 // ══════════════════════════════════════════════════════
-const _launchStaffBase=launchStaff;
-function launchStaff(){
-  _launchStaffBase();
-  wirePaymentStatus();
-  updateApprovalsBadge();
-  // Show exp tab for supervisors
-  const isSup=CU.roleLabel==='Supervisor';
-  const expTab=document.getElementById('expTab');
-  if(expTab)expTab.style.display=isSup?'':'none';
-}
-const _launchAdminBase=launchAdmin;
-function launchAdmin(){
-  _launchAdminBase();
-  updateApprovalsBadge();
-  // Set today's date on petty cash, float, rider trips
-  const today=new Date().toISOString().split('T')[0];
-  ['pc-date','fl-date','rt-date'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=today;});
-}
+
+
 
 // ══════════════════════════════════════════════════════
 // V5A — NOTIFICATION CHECK URL UPDATE
@@ -7337,9 +7253,7 @@ function adminMobileNav(page,el){
   if(el)el.classList.add('active');
   window.scrollTo(0,0);
 }
-function toggleMorePanel(){
-  document.getElementById('abnMorePanel').classList.toggle('open');
-}
+
 // Close more panel on outside click
 document.addEventListener('click',e=>{
   const mp=document.getElementById('abnMorePanel');
