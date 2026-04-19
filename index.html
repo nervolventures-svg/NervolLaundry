@@ -920,7 +920,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       </div>
       <div class="o-section">
         <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="qsb-w">GH₵ 0.00</span><span class="chevron">▼</span></div>
-        <div class="o-sec-body open"><div id="qWeightRows"></div><button class="add-row-btn" onclick="addQWeightRow()">+ Add</button></div>
+        <div class="o-sec-body open"><div id="qWeightRows"><p style="font-size:.78rem;color:var(--muted);padding:4px 0 6px;">Click + Add to add weight washing items.</p></div><button class="add-row-btn" onclick="addQWeightRow();document.getElementById('qWeightRows').querySelector('p')?.remove()">+ Add Weight Row</button></div>
       </div>
       <div class="o-section">
         <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="qsb-s">GH₵ 0.00</span><span class="chevron">▼</span></div>
@@ -960,6 +960,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div class="fg"><label>Customer Name</label><input type="text" id="comp-cust" placeholder="Customer name"></div>
         <div class="fg"><label>Description *</label><textarea id="comp-desc" placeholder="Describe the issue..."></textarea></div>
         <button class="btn btn-danger" onclick="staffLogComplaint()">⚠️ Log Complaint</button>
+          <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Fill in the form above and click Log Complaint. Complaints are visible to Admin for review.</p>
       </div>
       <div class="card">
         <div class="card-title">Recent Complaints</div>
@@ -5484,11 +5485,10 @@ function denyDelete(id){
 // ══════════════════════════════════════════════════════
 function initQuoteForm(){
   const qwr=document.getElementById('qWeightRows');
-  if(!qwr){
-    // DOM not ready, retry
-    setTimeout(initQuoteForm,100);
-    return;
-  }
+  if(!qwr){setTimeout(initQuoteForm,100);return;}
+  // Remove helper text if present
+  const hint=qwr.querySelector('p');if(hint)hint.remove();
+  // Always ensure at least one row exists
   if(qwr.children.length===0) addQWeightRow();
   calcQuote();
 }
@@ -5552,7 +5552,18 @@ function calcQuote(){
     const item=DB.beddingItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;total+=sub;
     const el=document.getElementById('qbs-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
   });
-  const el=document.getElementById('qTotal');if(el)el.textContent=`GH₵ ${total.toFixed(2)}`;
+  // Update section badges
+  const sbw=document.getElementById('qsb-w');
+  const sbs=document.getElementById('qsb-s');
+  const sbb=document.getElementById('qsb-b');
+  let wT2=0,spT2=0,bdT2=0;
+  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{const kg=parseFloat(r.querySelector('input')?.value)||0;const svc=r.querySelector('select')?.value||'fold';wT2+=kg*(svc==='fold'?DB.weightPricing?.fold||8:DB.weightPricing?.iron||12);});
+  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.specialItems?.find(i=>i.id===pid);if(item)spT2+=item.price*qty;});
+  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.beddingItems?.find(i=>i.id===pid);if(item)bdT2+=item.price*qty;});
+  if(sbw)sbw.textContent='GH₵ '+wT2.toFixed(2);
+  if(sbs)sbs.textContent='GH₵ '+spT2.toFixed(2);
+  if(sbb)sbb.textContent='GH₵ '+bdT2.toFixed(2);
+  const el=document.getElementById('qTotal');if(el)el.textContent='GH₵ '+total.toFixed(2);
   // Wire SMS
   const phone=(document.getElementById('q-phone')?.value||'').replace(/\D/g,'');
   const smsBtn=document.getElementById('qSMSBtn');
