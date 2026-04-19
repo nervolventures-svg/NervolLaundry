@@ -5342,7 +5342,7 @@ function staffLogComplaint(){
 function renderStaffComplaints(){
   const tbody=document.getElementById('compBody');if(!tbody)return;
   const mine=DB.complaints.filter(c=>c.branchId===CU._loginBranch).slice(0,20);
-  if(!mine.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">⚠️</div><p>No complaints logged.</p></div></td></tr>';return;}
+  if(!mine.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">⚠️</div><p>No complaints logged yet for this branch.</p></div></td></tr>';return;}
   tbody.innerHTML=mine.map(c=>`<tr>
     <td style="font-size:.74rem;">${fmtDate(c.createdAt)}</td>
     <td class="oid">${c.orderId||'—'}</td>
@@ -5494,32 +5494,47 @@ function initQuoteForm(){
 }
 function addQWeightRow(){
   const id='qwr'+Date.now();
+  const rate=(DB?.weightPricing?.fold)||8;
   const div=document.createElement('div');div.className='w-row';div.id=id;
-  div.innerHTML=`<select onchange="calcQuote()"><option value="fold">Wash &amp; Fold</option><option value="iron">Wash &amp; Iron</option></select>
-    <span style="font-size:.74rem;color:var(--muted)">@GH₵${DB.weightPricing.fold}/kg</span>
-    <input type="number" min="0" step="0.1" value="1" placeholder="kg" oninput="calcQuote()" style="max-width:80px;">
-    <span class="row-sub green" id="qws-${id}">GH₵0.00</span>
-    <button class="rm-btn" onclick="document.getElementById('${id}').remove();calcQuote()">✕</button>`;
-  document.getElementById('qWeightRows').appendChild(div);calcQuote();
+  div.innerHTML='<select onchange="calcQuote()"><option value="fold">Wash &amp; Fold</option><option value="iron">Wash &amp; Iron</option></select>'
+    +'<span style="font-size:.74rem;color:var(--muted)">@GH₵'+rate+'/kg</span>'
+    +'<input type="number" min="0" step="0.1" value="1" placeholder="kg" oninput="calcQuote()" style="max-width:80px;">'
+    +'<span class="row-sub green" id="qws-'+id+'">GH₵0.00</span>';
+  const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
+  rmBtn.onclick=function(){div.remove();calcQuote();};
+  div.appendChild(rmBtn);
+  const qwr=document.getElementById('qWeightRows');
+  if(qwr)qwr.appendChild(div);
+  calcQuote();
 }
 function addQSpecialRow(){
   const id='qsr'+Date.now();
-  const opts=DB.specialItems.map(i=>`<option value="${i.id}">${i.name} — GH₵${i.price.toFixed(2)}</option>`).join('');
+  const opts=DB.specialItems.map(i=>'<option value="'+i.id+'">'+i.name+' — GH₵'+i.price.toFixed(2)+'</option>').join('');
   const div=document.createElement('div');div.className='i-row';div.id=id;
-  div.innerHTML=`<select onchange="calcQuote()">${opts}</select><input type="number" min="1" value="1" oninput="calcQuote()">
-    <span class="row-sub gold" id="qss-${id}">GH₵0.00</span>
-    <button class="rm-btn" onclick="document.getElementById('${id}').remove();calcQuote()">✕</button>`;
-  document.getElementById('qSpecialRows').appendChild(div);calcQuote();
+  div.innerHTML='<select onchange="calcQuote()">'+opts+'</select>'
+    +'<input type="number" min="1" value="1" oninput="calcQuote()">'
+    +'<span class="row-sub gold" id="qss-'+id+'">GH₵0.00</span>';
+  const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
+  rmBtn.onclick=function(){div.remove();calcQuote();};
+  div.appendChild(rmBtn);
+  const qsr=document.getElementById('qSpecialRows');
+  if(qsr)qsr.appendChild(div);calcQuote();
 }
+
 function addQBeddingRow(){
   const id='qbr'+Date.now();
-  const opts=DB.beddingItems.map(i=>`<option value="${i.id}">${i.name} — GH₵${i.price.toFixed(2)}</option>`).join('');
+  const opts=DB.beddingItems.map(i=>'<option value="'+i.id+'">'+i.name+' — GH₵'+i.price.toFixed(2)+'</option>').join('');
   const div=document.createElement('div');div.className='i-row';div.id=id;
-  div.innerHTML=`<select onchange="calcQuote()">${opts}</select><input type="number" min="1" value="1" oninput="calcQuote()">
-    <span class="row-sub blue" id="qbs-${id}">GH₵0.00</span>
-    <button class="rm-btn" onclick="document.getElementById('${id}').remove();calcQuote()">✕</button>`;
-  document.getElementById('qBeddingRows').appendChild(div);calcQuote();
+  div.innerHTML='<select onchange="calcQuote()">'+opts+'</select>'
+    +'<input type="number" min="1" value="1" oninput="calcQuote()">'
+    +'<span class="row-sub blue" id="qbs-'+id+'">GH₵0.00</span>';
+  const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
+  rmBtn.onclick=function(){div.remove();calcQuote();};
+  div.appendChild(rmBtn);
+  const qbr=document.getElementById('qBeddingRows');
+  if(qbr)qbr.appendChild(div);calcQuote();
 }
+
 function calcQuote(){
   let total=0;
   document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{
