@@ -670,7 +670,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             </div>
             <div class="o-sec-body open">
               <div id="weightRows"></div>
-              <button class="add-row-btn" onclick="addWeightRow()">+ Add</button>
+              <button class="add-row-btn" onclick="admAddWeightRow()">+ Add</button>
             </div>
           </div>
 
@@ -682,7 +682,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             </div>
             <div class="o-sec-body open">
               <div id="specialRows"></div>
-              <button class="add-row-btn" onclick="addSpecialRow()">+ Add</button>
+              <button class="add-row-btn" onclick="admAddSpecialRow()">+ Add</button>
             </div>
           </div>
 
@@ -694,7 +694,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             </div>
             <div class="o-sec-body open">
               <div id="beddingRows"></div>
-              <button class="add-row-btn" onclick="addBeddingRow()">+ Add</button>
+              <button class="add-row-btn" onclick="admAddBeddingRow()">+ Add</button>
             </div>
           </div>
 
@@ -1101,10 +1101,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div class="o-section">
           <div class="o-sec-hdr open" onclick="toggleSec(this)">
             <span>⚖️</span><span>Weight Washing</span>
-            <span class="sec-badge" id="sb-weight">GH₵ 0.00</span><span class="chevron">▼</span>
+            <span class="sec-badge" id="adm-sb-weight">GH₵ 0.00</span><span class="chevron">▼</span>
           </div>
           <div class="o-sec-body open">
-            <div id="weightRows"></div>
+            <div id="adm-weightRows"></div>
             <button class="add-row-btn" onclick="addWeightRow()">+ Add Weight Row</button>
           </div>
         </div>
@@ -1112,10 +1112,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div class="o-section">
           <div class="o-sec-hdr open" onclick="toggleSec(this)">
             <span>✨</span><span>Special Items</span>
-            <span class="sec-badge" id="sb-special">GH₵ 0.00</span><span class="chevron">▼</span>
+            <span class="sec-badge" id="adm-sb-special">GH₵ 0.00</span><span class="chevron">▼</span>
           </div>
           <div class="o-sec-body open">
-            <div id="specialRows"></div>
+            <div id="adm-specialRows"></div>
             <button class="add-row-btn" onclick="addSpecialRow()">+ Add Item</button>
           </div>
         </div>
@@ -1123,10 +1123,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div class="o-section">
           <div class="o-sec-hdr open" onclick="toggleSec(this)">
             <span>🛏️</span><span>Bedding</span>
-            <span class="sec-badge" id="sb-bedding">GH₵ 0.00</span><span class="chevron">▼</span>
+            <span class="sec-badge" id="adm-sb-bedding">GH₵ 0.00</span><span class="chevron">▼</span>
           </div>
           <div class="o-sec-body open">
-            <div id="beddingRows"></div>
+            <div id="adm-beddingRows"></div>
             <button class="add-row-btn" onclick="addBeddingRow()">+ Add Bedding</button>
           </div>
         </div>
@@ -1134,25 +1134,25 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div class="o-section">
           <div class="o-sec-hdr open" onclick="toggleSec(this)">
             <span>🧴</span><span>Treatments</span>
-            <span class="sec-badge" id="sb-treat">GH₵ 0.00</span><span class="chevron">▼</span>
+            <span class="sec-badge" id="adm-sb-treat">GH₵ 0.00</span><span class="chevron">▼</span>
           </div>
           <div class="o-sec-body open">
-            <div id="treatGrid" class="treat-grid"></div>
+            <div id="adm-treatGrid" class="treat-grid"></div>
           </div>
         </div>
 
         <!-- TOTAL BAR -->
         <div class="order-total-bar" style="margin-top:4px;">
-          <div class="t-row"><span>Weight</span><span id="tb-w">GH₵ 0.00</span></div>
-          <div class="t-row"><span>Special</span><span id="tb-s">GH₵ 0.00</span></div>
-          <div class="t-row"><span>Bedding</span><span id="tb-b">GH₵ 0.00</span></div>
-          <div class="t-row"><span>Treatments</span><span id="tb-t">GH₵ 0.00</span></div>
-          <div class="t-row disc-row" id="tb-disc-wrap" style="display:none">
-            <span id="loyalty-badge" style="color:var(--accent2);"></span>
-            <span id="tb-disc" style="color:var(--accent2);"></span>
+          <div class="t-row"><span>Weight</span><span id="adm-tb-w">GH₵ 0.00</span></div>
+          <div class="t-row"><span>Special</span><span id="adm-tb-s">GH₵ 0.00</span></div>
+          <div class="t-row"><span>Bedding</span><span id="adm-tb-b">GH₵ 0.00</span></div>
+          <div class="t-row"><span>Treatments</span><span id="adm-tb-t">GH₵ 0.00</span></div>
+          <div class="t-row disc-row" id="adm-tb-disc-wrap" style="display:none">
+            <span id="adm-loyalty-badge" style="color:var(--accent2);"></span>
+            <span id="adm-tb-disc" style="color:var(--accent2);"></span>
           </div>
-          <div class="t-row bal-row" id="tb-bal-wrap" style="display:none">
-            <span>Balance Due</span><span id="tb-bal" style="color:var(--accent2);font-weight:700;"></span>
+          <div class="t-row bal-row" id="adm-tb-bal-wrap" style="display:none">
+            <span>Balance Due</span><span id="adm-tb-bal" style="color:var(--accent2);font-weight:700;"></span>
           </div>
         </div>
 
@@ -1161,7 +1161,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
           <div class="form-grid">
             <div class="fg">
               <label>Payment Status</label>
-              <select id="payStatus" onchange="liveCalc()">
+              <select id="adm-payStatus" onchange="liveCalc()">
                 <option value="unpaid">Unpaid</option>
                 <option value="partial">Part Payment</option>
                 <option value="paid">Fully Paid</option>
@@ -1170,37 +1170,37 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             </div>
             <div class="fg">
               <label>Delivery Type</label>
-              <select id="deliveryType">
+              <select id="adm-deliveryType">
                 <option value="pickup">Branch Pickup</option>
                 <option value="delivery">Home Delivery</option>
               </select>
             </div>
           </div>
-          <div class="fg" id="depositWrap" style="display:none;">
+          <div class="fg" id="adm-depositWrap" style="display:none;">
             <label>Deposit Amount (GH₵)</label>
-            <input type="number" id="depositAmt" min="0" step="0.50" placeholder="0.00" oninput="liveCalc()">
+            <input type="number" id="adm-depositAmt" min="0" step="0.50" placeholder="0.00" oninput="liveCalc()">
           </div>
-          <div id="momoWrap" style="display:none;">
-            <div class="fg"><label>MoMo Transaction ID</label><input type="text" id="momoTxId" placeholder="Transaction ID"></div>
-            <div class="fg"><label>MoMo Number</label><input type="tel" id="momoNum" placeholder="0244123456"></div>
+          <div id="adm-momoWrap" style="display:none;">
+            <div class="fg"><label>MoMo Transaction ID</label><input type="text" id="adm-momoTxId" placeholder="Transaction ID"></div>
+            <div class="fg"><label>MoMo Number</label><input type="tel" id="adm-momoNum" placeholder="0244123456"></div>
           </div>
           <div class="fg">
             <label>Rider (optional)</label>
-            <select id="riderSelect"></select>
+            <select id="adm-riderSelect"></select>
           </div>
           <div class="fg">
             <label>Order Notes</label>
-            <textarea id="orderNotes" placeholder="Special instructions..."></textarea>
+            <textarea id="adm-orderNotes" placeholder="Special instructions..."></textarea>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
             <div class="fg" style="flex:1;margin-bottom:0;">
               <label>🎟️ Promo / Discount Code</label>
-              <input type="text" id="promoCode" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()">
+              <input type="text" id="adm-promoCode" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()">
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="applyPromo()">Apply</button>
-            <span id="promoStatus" style="font-size:.78rem;padding-bottom:4px;"></span>
+            <button class="btn btn-secondary btn-sm" onclick="admApplyPromo()">Apply</button>
+            <span id="adm-promoStatus" style="font-size:.78rem;padding-bottom:4px;"></span>
           </div>
-          <div class="grand-display" id="grandDisplay">GH₵ 0.00</div>
+          <div class="grand-display" id="adm-grandDisplay">GH₵ 0.00</div>
           <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px;font-size:1rem;" onclick="adminSubmitOrder()">✅ Submit Order</button>
         </div>
       </div>
@@ -3636,8 +3636,7 @@ function showAPage(page,el){
       const ps=document.getElementById('promoStatus');if(ps)ps.textContent='';
       // Init the full order form immediately (like staff form)
       setTimeout(()=>{
-        initOrderForm();
-        populateRiderSelect();
+        admInitOrderForm();
       },50);
     }
     if(page==='debttracker')renderDebtTracker();
@@ -4739,68 +4738,7 @@ function adminOrderBranchChange(){
     showAdminOrderItems();
   }
 }
-function showAdminOrderItems(){
-  const wrap=document.getElementById('adminOrderItems');
-  if(!wrap)return;
-  const branch=document.getElementById('adminOrderBranch')?.value||CU._loginBranch;
-  if(CU)CU._loginBranch=branch;
-  wrap.innerHTML=`
-    <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="sb-weight">GH₵ 0.00</span><span class="chevron">▼</span></div>
-      <div class="o-sec-body open"><div id="weightRows"></div><button class="add-row-btn" onclick="addWeightRow()">+ Add</button></div>
-    </div>
-    <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="sb-special">GH₵ 0.00</span><span class="chevron">▼</span></div>
-      <div class="o-sec-body open"><div id="specialRows"></div><button class="add-row-btn" onclick="addSpecialRow()">+ Add</button></div>
-    </div>
-    <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>🛏️</span><span>Bedding</span><span class="sec-badge" id="sb-bedding">GH₵ 0.00</span><span class="chevron">▼</span></div>
-      <div class="o-sec-body open"><div id="beddingRows"></div><button class="add-row-btn" onclick="addBeddingRow()">+ Add</button></div>
-    </div>
-    <div class="o-section">
-      <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>🧴</span><span>Treatments</span><span class="sec-badge" id="sb-treat">GH₵ 0.00</span><span class="chevron">▼</span></div>
-      <div class="o-sec-body open"><div id="treatGrid" class="treat-grid"></div></div>
-    </div>
-    <div class="order-total-bar" id="orderTotalBar">
-      <div class="t-row"><span>Weight</span><span id="tb-w">GH₵ 0.00</span></div>
-      <div class="t-row"><span>Special</span><span id="tb-s">GH₵ 0.00</span></div>
-      <div class="t-row"><span>Bedding</span><span id="tb-b">GH₵ 0.00</span></div>
-      <div class="t-row"><span>Treatments</span><span id="tb-t">GH₵ 0.00</span></div>
-      <div class="t-row disc-row" id="tb-disc-wrap" style="display:none"><span id="loyalty-badge"></span><span id="tb-disc"></span></div>
-      <div class="t-row bal-row" id="tb-bal-wrap" style="display:none"><span>Balance Due</span><span id="tb-bal"></span></div>
-    </div>
-    <div class="card" style="margin-top:12px;">
-      <div class="form-grid">
-        <div class="fg"><label>Payment</label>
-          <select id="payStatus" onchange="liveCalc()">
-            <option value="unpaid">Unpaid</option>
-            <option value="partial">Part Payment</option>
-            <option value="paid">Fully Paid</option>
-            <option value="momo">MoMo Payment</option>
-          </select>
-        </div>
-        <div class="fg"><label>Delivery</label>
-          <select id="deliveryType">
-            <option value="pickup">Branch Pickup</option>
-            <option value="delivery">Home Delivery</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg" id="depositWrap" style="display:none;"><label>Deposit (GH₵)</label><input type="number" id="depositAmt" min="0" step="0.50" placeholder="0.00" oninput="liveCalc()"></div>
-      <div class="fg"><label>Rider (optional)</label><select id="riderSelect"></select></div>
-      <div class="fg"><label>Notes</label><textarea id="orderNotes" placeholder="Special instructions..."></textarea></div>
-      <div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
-        <div class="fg" style="flex:1;margin-bottom:0;"><label>🎟️ Promo / Discount Code</label>
-          <input type="text" id="promoCode" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()">
-        </div>
-        <button class="btn btn-secondary btn-sm" onclick="applyPromo()">Apply</button>
-        <span id="promoStatus" style="font-size:.78rem;"></span>
-      </div>
-      <div class="grand-display" id="grandDisplay">GH₵ 0.00</div>
-      <button class="btn btn-primary" style="width:100%;margin-top:12px;" onclick="submitOrder()">✅ Submit Order</button>
-    </div>`;
-  initOrderForm();
-}
+
 
 function adminSearchCust(q){
   const res=document.getElementById('adminCustResults');
@@ -4937,23 +4875,228 @@ function adminQuickCreateCust(){
   showNotif('Customer created!','ok');
 }
 
-function adminSubmitOrder(){
-  // Validate customer selected
-  if(!selCust){
-    // Check if new customer name was typed
-    const newName=(document.getElementById('adminNewCustName')?.value||'').trim();
-    if(newName){
-      adminQuickCreateCust();
-      setTimeout(adminSubmitOrder,200);
-      return;
-    }
-    showNotif('Select or create a customer first.','err');
-    return;
+
+
+
+// ══════════════════════════════════════════════════════
+// ADMIN ORDER FORM - uses adm- prefixed IDs
+// ══════════════════════════════════════════════════════
+function admAddWeightRow(svc, kg){
+  const id='adwr'+Date.now();
+  const div=document.createElement('div');div.className='w-row';div.id=id;
+  const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
+  rmBtn.onclick=function(){div.remove();admLiveCalc();};
+  div.innerHTML='<select onchange="admLiveCalc()"><option value="fold"'+(svc==='fold'?' selected':'')+'>Wash &amp; Fold</option><option value="iron"'+(svc==='iron'?' selected':'')+'>Wash &amp; Iron</option></select>'
+    +'<span style="font-size:.74rem;color:var(--muted)">@GH₵'+DB.weightPricing.fold+'/kg</span>'
+    +'<input type="number" min="0" step="0.1" value="'+(kg||1)+'" placeholder="kg" oninput="admLiveCalc()" style="max-width:80px;">'
+    +'<span class="row-sub green" id="adws-'+id+'">GH₵0.00</span>';
+  div.appendChild(rmBtn);
+  const wr=document.getElementById('adm-weightRows');
+  if(wr)wr.appendChild(div);
+  admLiveCalc();
+}
+function admAddSpecialRow(){
+  const id='adsr'+Date.now();
+  const opts=DB.specialItems.map(i=>'<option value="'+i.id+'">'+i.name+' — GH₵'+i.price.toFixed(2)+'</option>').join('');
+  const div=document.createElement('div');div.className='i-row';div.id=id;
+  const rmBtnS=document.createElement('button');rmBtnS.className='rm-btn';rmBtnS.textContent='✕';
+  rmBtnS.onclick=function(){div.remove();admLiveCalc();};
+  div.innerHTML='<select onchange="admLiveCalc()">'+opts+'</select><input type="number" min="1" value="1" oninput="admLiveCalc()">'
+    +'<span class="row-sub gold" id="adss-'+id+'">GH₵0.00</span>';
+  div.appendChild(rmBtnS);
+  const sr=document.getElementById('adm-specialRows');
+  if(sr)sr.appendChild(div);
+  admLiveCalc();
+}
+function admAddBeddingRow(){
+  const id='adbr'+Date.now();
+  const opts=DB.beddingItems.map(i=>'<option value="'+i.id+'">'+i.name+' — GH₵'+i.price.toFixed(2)+'</option>').join('');
+  const div=document.createElement('div');div.className='i-row';div.id=id;
+  const rmBtnB=document.createElement('button');rmBtnB.className='rm-btn';rmBtnB.textContent='✕';
+  rmBtnB.onclick=function(){div.remove();admLiveCalc();};
+  div.innerHTML='<select onchange="admLiveCalc()">'+opts+'</select><input type="number" min="1" value="1" oninput="admLiveCalc()">'
+    +'<span class="row-sub blue" id="adbs-'+id+'">GH₵0.00</span>';
+  div.appendChild(rmBtnB);
+  const br=document.getElementById('adm-beddingRows');
+  if(br)br.appendChild(div);
+  admLiveCalc();
+}
+function admRenderTreatCards(){
+  const tg=document.getElementById('adm-treatGrid');if(!tg)return;
+  tg.innerHTML=DB.treatments.map(t=>'<label class="treat-card"><input type="checkbox" id="adtrcb-'+t.id+'" onchange="admLiveCalc()"><span class="tc-name">'+t.name+'</span><span class="tc-price">GH₵'+t.price.toFixed(2)+'</span></label>').join('');
+}
+
+function admApplyPromo(){
+  const code=(document.getElementById('adm-promoCode')?.value||'').trim().toUpperCase();
+  const stat=document.getElementById('adm-promoStatus');
+  if(!code){activePromo=null;if(stat)stat.textContent='';admLiveCalc();return;}
+  const now=new Date();
+  const p=DB.promos.find(p=>p.code===code&&p.active&&new Date(p.expiry)>=now&&(p.maxUses===0||p.usedCount<p.maxUses));
+  if(!p){activePromo=null;if(stat){stat.style.color='var(--accent2)';stat.textContent='❌ Invalid or expired';}}
+  else{activePromo=p;if(stat){stat.style.color='var(--accent)';stat.textContent='✅ '+p.discountPct+'% off';}}
+  admLiveCalc();
+}
+function admInitOrderForm(){
+  const wr=document.getElementById('adm-weightRows');
+  if(wr&&wr.children.length===0)admAddWeightRow('fold',1);
+  admRenderTreatCards();
+  // Wire payment select
+  const ps=document.getElementById('adm-payStatus');
+  if(ps&&!ps._wired){
+    ps.addEventListener('change',function(){
+      const dw=document.getElementById('adm-depositWrap');
+      const mw=document.getElementById('adm-momoWrap');
+      if(dw)dw.style.display=this.value==='partial'?'block':'none';
+      if(mw)mw.style.display=this.value==='momo'?'block':'none';
+      admLiveCalc();
+    });
+    ps._wired=true;
   }
-  // Set branch from admin branch selector
+  // Populate rider select
+  const rs=document.getElementById('adm-riderSelect');
+  if(rs)rs.innerHTML='<option value="">— No rider —</option>'+DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+  admLiveCalc();
+}
+function admLiveCalc(){
+  let wT=0,spT=0,bdT=0,trT=0;
+  document.querySelectorAll('#adm-weightRows .w-row').forEach(row=>{
+    const svc=row.querySelector('select').value;
+    const kg=parseFloat(row.querySelector('input[type=number]').value)||0;
+    const rate=svc==='fold'?DB.weightPricing.fold:DB.weightPricing.iron;
+    const sub=kg*rate;wT+=sub;
+    const sid=row.id;const el=document.getElementById('adws-'+sid);if(el)el.textContent='GH₵'+sub.toFixed(2);
+  });
+  document.querySelectorAll('#adm-specialRows .i-row').forEach(row=>{
+    const pid=row.querySelector('select').value;const qty=parseInt(row.querySelector('input').value)||1;
+    const item=DB.specialItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;spT+=sub;
+    const el=document.getElementById('adss-'+row.id);if(el)el.textContent='GH₵'+sub.toFixed(2);
+  });
+  document.querySelectorAll('#adm-beddingRows .i-row').forEach(row=>{
+    const pid=row.querySelector('select').value;const qty=parseInt(row.querySelector('input').value)||1;
+    const item=DB.beddingItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;bdT+=sub;
+    const el=document.getElementById('adbs-'+row.id);if(el)el.textContent='GH₵'+sub.toFixed(2);
+  });
+  DB.treatments.forEach(t=>{const cb=document.getElementById('adtrcb-'+t.id);if(cb&&cb.checked)trT+=t.price;});
+  const grand=wT+spT+bdT+trT;
+  // Discounts
+  const gdA=getActiveGlobalDiscount();
+  const gdP=gdA?gdA.pct:0;
+  const loyP=selCust?checkLoyalty(selCust):0;
+  const promoP=(!gdA&&activePromo)?activePromo.discountPct:0;
+  let discP,discA,discLbl;
+  if(gdP>0){discP=gdP;discA=parseFloat((grand*gdP/100).toFixed(2));discLbl='🔥 '+gdA.label;}
+  else if(promoP>0){discP=promoP;discA=parseFloat((grand*promoP/100).toFixed(2));discLbl='🎟️ '+(activePromo?.code||'');}
+  else{discP=loyP;discA=parseFloat((grand*loyP/100).toFixed(2));discLbl='⭐ '+loyP+'% loyalty';}
+  const grandFinal=grand-discA;
+  const ps=document.getElementById('adm-payStatus')?.value||'unpaid';
+  const dep=ps==='partial'?parseFloat(document.getElementById('adm-depositAmt')?.value)||0:ps==='paid'?grandFinal:0;
+  const bal=Math.max(0,grandFinal-dep);
+  // Update badges
+  const sb=id=>document.getElementById('adm-sb-'+id);
+  if(sb('weight'))sb('weight').textContent='GH₵ '+wT.toFixed(2);
+  if(sb('special'))sb('special').textContent='GH₵ '+spT.toFixed(2);
+  if(sb('bedding'))sb('bedding').textContent='GH₵ '+bdT.toFixed(2);
+  if(sb('treat'))sb('treat').textContent='GH₵ '+trT.toFixed(2);
+  // Total bar
+  const tb=id=>document.getElementById('adm-tb-'+id);
+  if(tb('w'))tb('w').textContent='GH₵'+wT.toFixed(2);
+  if(tb('s'))tb('s').textContent='GH₵'+spT.toFixed(2);
+  if(tb('b'))tb('b').textContent='GH₵'+bdT.toFixed(2);
+  if(tb('t'))tb('t').textContent='GH₵'+trT.toFixed(2);
+  const dw=document.getElementById('adm-tb-disc-wrap');
+  const lb=document.getElementById('adm-loyalty-badge');
+  const dc=document.getElementById('adm-tb-disc');
+  if(discA>0&&dw){dw.style.display='block';if(lb)lb.textContent=discLbl;if(dc)dc.textContent='-GH₵'+discA.toFixed(2);}
+  else if(dw)dw.style.display='none';
+  const bw=document.getElementById('adm-tb-bal-wrap');
+  const bt=document.getElementById('adm-tb-bal');
+  if(bal>0&&bw){bw.style.display='block';if(bt)bt.textContent='GH₵'+bal.toFixed(2);}
+  else if(bw)bw.style.display='none';
+  const gd=document.getElementById('adm-grandDisplay');
+  if(gd)gd.textContent='GH₵ '+grandFinal.toFixed(2);
+}
+function admCollectItems(){
+  const weightItems=[];
+  document.querySelectorAll('#adm-weightRows .w-row').forEach(row=>{
+    const svc=row.querySelector('select').value;
+    const kg=parseFloat(row.querySelector('input[type=number]').value)||0;
+    if(kg>0){const rate=svc==='fold'?DB.weightPricing.fold:DB.weightPricing.iron;weightItems.push({svc,kg,rate,subtotal:kg*rate,label:(svc==='fold'?'Wash & Fold':'Wash & Iron')+' '+kg+'kg @GH₵'+rate+'/kg'});}
+  });
+  const specialItems=[];
+  document.querySelectorAll('#adm-specialRows .i-row').forEach(row=>{
+    const pid=row.querySelector('select').value;const qty=parseInt(row.querySelector('input').value)||1;
+    const item=DB.specialItems.find(i=>i.id===pid);
+    if(item)specialItems.push({...item,qty,subtotal:item.price*qty});
+  });
+  const beddingItems=[];
+  document.querySelectorAll('#adm-beddingRows .i-row').forEach(row=>{
+    const pid=row.querySelector('select').value;const qty=parseInt(row.querySelector('input').value)||1;
+    const item=DB.beddingItems.find(i=>i.id===pid);
+    if(item)beddingItems.push({...item,qty,subtotal:item.price*qty});
+  });
+  const treatments=[];
+  DB.treatments.forEach(t=>{const cb=document.getElementById('adtrcb-'+t.id);if(cb&&cb.checked)treatments.push(t);});
+  return{weightItems,specialItems,beddingItems,treatments};
+}
+function adminSubmitOrder(){
+  if(!selCust){
+    const newName=(document.getElementById('adminNewCustName')?.value||'').trim();
+    if(newName){adminQuickCreateCust();setTimeout(adminSubmitOrder,200);return;}
+    showNotif('Select or create a customer first.','err');return;
+  }
   const branch=document.getElementById('adminOrderBranch')?.value;
   if(branch&&CU)CU._loginBranch=branch;
-  submitOrder();
+  const{weightItems,specialItems,beddingItems,treatments}=admCollectItems();
+  if(!weightItems.length&&!specialItems.length&&!beddingItems.length){showNotif('Add at least one item.','err');return;}
+  const wT=weightItems.reduce((s,i)=>s+i.subtotal,0);
+  const spT=specialItems.reduce((s,i)=>s+i.subtotal,0);
+  const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
+  const trT=treatments.reduce((s,i)=>s+i.price,0);
+  const subtotal=wT+spT+bdT+trT;
+  // Discounts
+  const gdA=getActiveGlobalDiscount();
+  const gdP=gdA?gdA.pct:0;
+  const loyP=checkLoyalty(selCust);
+  const promoP=(!gdA&&activePromo)?activePromo.discountPct:0;
+  let discPct,discAmt,promoCode,discLabel;
+  if(gdP>0){discPct=gdP;discAmt=parseFloat((subtotal*gdP/100).toFixed(2));promoCode='';discLabel='🔥 '+gdA.label;if(DB.globalDiscount)DB.globalDiscount.usedCount=(DB.globalDiscount.usedCount||0)+1;}
+  else if(promoP>0){discPct=promoP;discAmt=parseFloat((subtotal*promoP/100).toFixed(2));promoCode=activePromo?.code||'';discLabel='🎟️ '+promoCode+'('+promoP+'% off)';}
+  else{discPct=loyP;discAmt=parseFloat((subtotal*loyP/100).toFixed(2));promoCode='';discLabel='⭐ '+loyP+'% loyalty';}
+  const total=subtotal-discAmt;
+  const ps=document.getElementById('adm-payStatus')?.value||'unpaid';
+  const dep=ps==='partial'?parseFloat(document.getElementById('adm-depositAmt')?.value)||0:ps==='paid'?total:0;
+  const riderId=document.getElementById('adm-riderSelect')?.value||'';
+  const order={
+    id:'NL-'+new Date().getFullYear()+'-'+Date.now().toString(36).toUpperCase(),
+    customerId:selCust.id,customerName:selCust.name,customerPhone:selCust.phone,
+    branchId:CU._loginBranch,
+    deliveryType:document.getElementById('adm-deliveryType')?.value||'pickup',
+    riderId,notes:document.getElementById('adm-orderNotes')?.value||'',
+    weightItems,specialItems,beddingItems,treatments,
+    wTotal:wT,spTotal:spT,bdTotal:bdT,trTotal:trT,subtotal,discPct,discAmt,promoCode,discLabel,total,
+    payStatus:ps,depositPaid:dep,balanceDue:Math.max(0,total-dep),
+    status:'pending',createdBy:CU.id,createdAt:new Date().toISOString(),
+  };
+  DB.orders.unshift(order);DB.nextOrderNum++;
+  const c=DB.customers.find(x=>x.id===selCust.id);
+  if(c){c.totalOrders=(c.totalOrders||0)+1;c.totalSpent=(c.totalSpent||0)+total;}
+  if(activePromo&&!gdA){const p=DB.promos.find(x=>x.id===activePromo.id);if(p)p.usedCount=(p.usedCount||0)+1;activePromo=null;}
+  saveOrder(order);if(c)saveCustomer(c);saveSettings();
+  lastCreatedOrder=order;
+  document.getElementById('sc-orderId').textContent=order.id;
+  document.getElementById('sc-custName').textContent=order.customerName+' · '+order.customerPhone;
+  document.getElementById('sc-total').textContent='GH₵ '+order.total.toFixed(2);
+  document.getElementById('sc-payinfo').textContent=ps==='paid'?'Fully Paid ✅':ps==='partial'?'Deposit: GH₵'+dep.toFixed(2)+' · Balance: GH₵'+order.balanceDue.toFixed(2):'Unpaid';
+  document.getElementById('sc-branch').textContent=branchName(order.branchId);
+  openModal('successModal');
+  // Reset admin form
+  clearAdminCust();
+  document.getElementById('adm-weightRows').innerHTML='';
+  document.getElementById('adm-specialRows').innerHTML='';
+  document.getElementById('adm-beddingRows').innerHTML='';
+  document.getElementById('adm-treatGrid').innerHTML='';
+  admInitOrderForm();
+  checkOverdue();showNotif('Order '+order.id+' created!','ok');
 }
 
 // ── INIT ──
