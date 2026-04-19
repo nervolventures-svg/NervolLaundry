@@ -1032,64 +1032,144 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       
       <!-- ADMIN NEW ORDER -->
       <div class="a-page" id="ap-neworder">
-        <div class="card">
+        <div class="card" style="margin-bottom:12px;">
           <div class="card-title">➕ Create New Order</div>
-          <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">Select branch and customer, then fill in the order details.</p>
-          <div class="fg"><label>Branch</label>
+          <div class="fg">
+            <label>Branch</label>
             <select id="adminOrderBranch" onchange="adminOrderBranchChange()"></select>
           </div>
         </div>
-        <div id="adminOrderFormWrap">
-          <!-- Reuses staff order form sections -->
-          <div class="o-section">
-            <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>👤</span><span>Customer</span><span class="chevron">▼</span></div>
-            <div class="o-sec-body open">
-              <div class="cust-lookup">
-                <input type="text" id="adminCustSearch" class="search-input" placeholder="🔍 Search or create customer..." oninput="adminSearchCust(this.value)">
-                <div class="cust-results" id="adminCustResults"></div>
-              </div>
-              <div id="adminCustSelected" style="display:none;background:var(--surface2);border-radius:8px;padding:10px 14px;margin-top:8px;">
-                <span id="adminCustName" style="font-weight:700;"></span>
-                <span id="adminCustMeta" style="font-size:.8rem;color:var(--muted);margin-left:8px;"></span>
-                <button class="btn btn-xs btn-secondary" style="margin-left:8px;" onclick="clearAdminCust()">✕ Clear</button>
-              </div>
+
+        <!-- CUSTOMER SECTION -->
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:10px;">👤 Customer</div>
+          <div class="cust-lookup" style="position:relative;">
+            <input type="text" id="adminCustSearch" class="search-input"
+              placeholder="🔍 Search by name or phone..."
+              oninput="adminSearchCust(this.value)"
+              autocomplete="off">
+            <div id="adminCustResults" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:0 0 8px 8px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
+          </div>
+          <div id="adminCustSelected" style="display:none;background:var(--surface2);border-radius:8px;padding:10px 14px;margin-top:10px;display:none;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div>
+              <div id="adminCustName" style="font-weight:700;"></div>
+              <div id="adminCustMeta" style="font-size:.8rem;color:var(--muted);"></div>
+            </div>
+            <button class="btn btn-xs btn-secondary" onclick="clearAdminCust()">✕ Clear</button>
+          </div>
+          <!-- Quick create new customer -->
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="text" id="adminNewCustName" class="search-input" placeholder="Or type new customer name..." style="flex:1;">
+            <input type="tel" id="adminNewCustPhone" class="search-input" placeholder="Phone" style="max-width:160px;">
+            <button class="btn btn-secondary btn-sm" onclick="adminQuickCreateCust()">+ Create</button>
+          </div>
+        </div>
+
+        <!-- ORDER ITEMS - show all upfront like staff form -->
+        <div class="o-section">
+          <div class="o-sec-hdr open" onclick="toggleSec(this)">
+            <span>⚖️</span><span>Weight Washing</span>
+            <span class="sec-badge" id="sb-weight">GH₵ 0.00</span><span class="chevron">▼</span>
+          </div>
+          <div class="o-sec-body open">
+            <div id="weightRows"></div>
+            <button class="add-row-btn" onclick="addWeightRow()">+ Add Weight Row</button>
+          </div>
+        </div>
+
+        <div class="o-section">
+          <div class="o-sec-hdr open" onclick="toggleSec(this)">
+            <span>✨</span><span>Special Items</span>
+            <span class="sec-badge" id="sb-special">GH₵ 0.00</span><span class="chevron">▼</span>
+          </div>
+          <div class="o-sec-body open">
+            <div id="specialRows"></div>
+            <button class="add-row-btn" onclick="addSpecialRow()">+ Add Item</button>
+          </div>
+        </div>
+
+        <div class="o-section">
+          <div class="o-sec-hdr open" onclick="toggleSec(this)">
+            <span>🛏️</span><span>Bedding</span>
+            <span class="sec-badge" id="sb-bedding">GH₵ 0.00</span><span class="chevron">▼</span>
+          </div>
+          <div class="o-sec-body open">
+            <div id="beddingRows"></div>
+            <button class="add-row-btn" onclick="addBeddingRow()">+ Add Bedding</button>
+          </div>
+        </div>
+
+        <div class="o-section">
+          <div class="o-sec-hdr open" onclick="toggleSec(this)">
+            <span>🧴</span><span>Treatments</span>
+            <span class="sec-badge" id="sb-treat">GH₵ 0.00</span><span class="chevron">▼</span>
+          </div>
+          <div class="o-sec-body open">
+            <div id="treatGrid" class="treat-grid"></div>
+          </div>
+        </div>
+
+        <!-- TOTAL BAR -->
+        <div class="order-total-bar" style="margin-top:4px;">
+          <div class="t-row"><span>Weight</span><span id="tb-w">GH₵ 0.00</span></div>
+          <div class="t-row"><span>Special</span><span id="tb-s">GH₵ 0.00</span></div>
+          <div class="t-row"><span>Bedding</span><span id="tb-b">GH₵ 0.00</span></div>
+          <div class="t-row"><span>Treatments</span><span id="tb-t">GH₵ 0.00</span></div>
+          <div class="t-row disc-row" id="tb-disc-wrap" style="display:none">
+            <span id="loyalty-badge" style="color:var(--accent2);"></span>
+            <span id="tb-disc" style="color:var(--accent2);"></span>
+          </div>
+          <div class="t-row bal-row" id="tb-bal-wrap" style="display:none">
+            <span>Balance Due</span><span id="tb-bal" style="color:var(--accent2);font-weight:700;"></span>
+          </div>
+        </div>
+
+        <!-- PAYMENT & SUBMIT -->
+        <div class="card" style="margin-top:12px;">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Payment Status</label>
+              <select id="payStatus" onchange="liveCalc()">
+                <option value="unpaid">Unpaid</option>
+                <option value="partial">Part Payment</option>
+                <option value="paid">Fully Paid</option>
+                <option value="momo">MoMo Payment</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Delivery Type</label>
+              <select id="deliveryType">
+                <option value="pickup">Branch Pickup</option>
+                <option value="delivery">Home Delivery</option>
+              </select>
             </div>
           </div>
-          <div id="adminOrderItems">
-            <p style="color:var(--muted);font-size:.84rem;padding:12px;">Select a customer above to continue.</p>
+          <div class="fg" id="depositWrap" style="display:none;">
+            <label>Deposit Amount (GH₵)</label>
+            <input type="number" id="depositAmt" min="0" step="0.50" placeholder="0.00" oninput="liveCalc()">
           </div>
-        </div>
-      </div>
-<div class="a-page active" id="ap-dashboard">
-        <div id="supplyDashAlert" style="display:none;"></div>
-        <div class="stats-row">
-          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val green" id="d-rev">GH₵ 0</div><div class="stat-label">Today Revenue</div></div>
-          <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-val gold" id="d-orders">0</div><div class="stat-label">Today Orders</div></div>
-          <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-val red" id="d-exp">GH₵ 0</div><div class="stat-label">Today Expenses</div></div>
-          <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val blue" id="d-active">0</div><div class="stat-label">Active Orders</div></div>
-          <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-val red" id="d-overdue">0</div><div class="stat-label">Overdue</div></div>
-        </div>
-        <div class="chart-row">
-          <div class="chart-wrap">
-            <div class="chart-title">This Week — Revenue vs Expenses</div>
-            <div class="bar-chart" id="weekChart"></div>
-            <div style="display:flex;gap:12px;margin-top:8px;">
-              <div style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted)"><div style="width:9px;height:9px;background:var(--accent);border-radius:2px;"></div>Revenue</div>
-              <div style="display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted)"><div style="width:9px;height:9px;background:var(--accent2);border-radius:2px;opacity:.75;"></div>Expenses</div>
+          <div id="momoWrap" style="display:none;">
+            <div class="fg"><label>MoMo Transaction ID</label><input type="text" id="momoTxId" placeholder="Transaction ID"></div>
+            <div class="fg"><label>MoMo Number</label><input type="tel" id="momoNum" placeholder="0244123456"></div>
+          </div>
+          <div class="fg">
+            <label>Rider (optional)</label>
+            <select id="riderSelect"></select>
+          </div>
+          <div class="fg">
+            <label>Order Notes</label>
+            <textarea id="orderNotes" placeholder="Special instructions..."></textarea>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
+            <div class="fg" style="flex:1;margin-bottom:0;">
+              <label>🎟️ Promo / Discount Code</label>
+              <input type="text" id="promoCode" placeholder="e.g. NERVOL10" oninput="this.value=this.value.toUpperCase()">
             </div>
+            <button class="btn btn-secondary btn-sm" onclick="applyPromo()">Apply</button>
+            <span id="promoStatus" style="font-size:.78rem;padding-bottom:4px;"></span>
           </div>
-          <div class="chart-wrap">
-            <div class="chart-title">Revenue by Service Type</div>
-            <div id="svcChart"></div>
-          </div>
-          <div class="chart-wrap">
-            <div class="chart-title">Order Status</div>
-            <div id="statusChart"></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Recent Orders</div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Branch</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr></thead><tbody id="dashRecent"></tbody></table></div>
+          <div class="grand-display" id="grandDisplay">GH₵ 0.00</div>
+          <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px;font-size:1rem;" onclick="adminSubmitOrder()">✅ Submit Order</button>
         </div>
       </div>
 
@@ -3509,14 +3589,17 @@ function showAPage(page,el){
       const ab=document.getElementById('adminOrderBranch');
       if(ab){
         ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-        // Default to first branch
         if(ab.value&&CU)CU._loginBranch=ab.value;
       }
-      // Reset form
-      if(typeof clearAdminCust==='function')clearAdminCust();
+      clearAdminCust();
       activePromo=null;
       const pc=document.getElementById('promoCode');if(pc)pc.value='';
       const ps=document.getElementById('promoStatus');if(ps)ps.textContent='';
+      // Init the full order form immediately (like staff form)
+      setTimeout(()=>{
+        initOrderForm();
+        populateRiderSelect();
+      },50);
     }
     if(page==='debttracker')renderDebtTracker();
     if(page==='promos'){renderPromos();renderGlobalDiscountStatus();}
@@ -4676,18 +4759,27 @@ function adminSearchCust(q){
 function selectAdminCust(id){
   const c=DB.customers.find(x=>x.id===id);if(!c)return;
   selCust=c;
-  document.getElementById('adminCustSelected').style.display='block';
-  document.getElementById('adminCustName').textContent=c.name;
-  document.getElementById('adminCustMeta').textContent=c.phone+(c.address?' · '+c.address:'');
-  document.getElementById('adminCustSearch').value='';
-  document.getElementById('adminCustResults').innerHTML='';
-  showAdminOrderItems();
+  const sel=document.getElementById('adminCustSelected');
+  if(sel)sel.style.display='flex';
+  const nm=document.getElementById('adminCustName');
+  if(nm)nm.textContent=c.name;
+  const mt=document.getElementById('adminCustMeta');
+  if(mt)mt.textContent=c.phone+(c.address?' · '+c.address:'');
+  const srch=document.getElementById('adminCustSearch');
+  if(srch)srch.value='';
+  const res=document.getElementById('adminCustResults');
+  if(res)res.innerHTML='';
+  liveCalc(); // recalc with loyalty
+  showNotif('Customer: '+c.name,'ok');
 }
 function clearAdminCust(){
   selCust=null;
-  document.getElementById('adminCustSelected').style.display='none';
-  document.getElementById('adminCustSearch').value='';
-  document.getElementById('adminOrderItems').innerHTML='<p style="color:var(--muted);font-size:.84rem;padding:12px;">Select a customer above to continue.</p>';
+  const sel=document.getElementById('adminCustSelected');
+  if(sel)sel.style.display='none';
+  const srch=document.getElementById('adminCustSearch');
+  if(srch)srch.value='';
+  const res=document.getElementById('adminCustResults');
+  if(res)res.innerHTML='';
 }
 function adminCreateAndSelect(name){
   const c={id:'c'+Date.now(),name:name.trim(),phone:'',address:'',totalOrders:0,totalSpent:0,createdAt:new Date().toISOString()};
@@ -4775,6 +4867,38 @@ function renderGlobalDiscountStatus(){
   } else {
     el.innerHTML='<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--muted);">⚪ No active global discount.</div>';
   }
+}
+
+
+function adminQuickCreateCust(){
+  const name=(document.getElementById('adminNewCustName')?.value||'').trim();
+  const phone=(document.getElementById('adminNewCustPhone')?.value||'').trim();
+  if(!name){showNotif('Enter customer name.','err');return;}
+  const c={id:'c'+Date.now(),name,phone,address:'',totalOrders:0,totalSpent:0,createdAt:new Date().toISOString()};
+  DB.customers.push(c);saveCustomer(c);
+  selectAdminCust(c.id);
+  document.getElementById('adminNewCustName').value='';
+  document.getElementById('adminNewCustPhone').value='';
+  showNotif('Customer created!','ok');
+}
+
+function adminSubmitOrder(){
+  // Validate customer selected
+  if(!selCust){
+    // Check if new customer name was typed
+    const newName=(document.getElementById('adminNewCustName')?.value||'').trim();
+    if(newName){
+      adminQuickCreateCust();
+      setTimeout(adminSubmitOrder,200);
+      return;
+    }
+    showNotif('Select or create a customer first.','err');
+    return;
+  }
+  // Set branch from admin branch selector
+  const branch=document.getElementById('adminOrderBranch')?.value;
+  if(branch&&CU)CU._loginBranch=branch;
+  submitOrder();
 }
 
 // ── INIT ──
