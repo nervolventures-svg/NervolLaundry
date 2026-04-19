@@ -1428,6 +1428,23 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
       <!-- PROMO CODES -->
       <div class="a-page" id="ap-promos">
+        <!-- GLOBAL DISCOUNT -->
+        <div class="card" style="margin-bottom:12px;border:2px solid var(--accent2);">
+          <div class="card-title" style="color:var(--accent2);">🔥 Global Discount <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— overrides all promo codes</span></div>
+          <div id="globalDiscStatus" style="margin-bottom:12px;"></div>
+          <div class="form-grid" id="globalDiscForm">
+            <div class="fg"><label>Discount %</label><input type="number" id="gd-pct" min="1" max="100" placeholder="e.g. 15"></div>
+            <div class="fg"><label>Label (shown on receipt)</label><input type="text" id="gd-label" placeholder="e.g. Weekend Sale, Christmas Offer"></div>
+            <div class="fg"><label>Start Date</label><input type="date" id="gd-start"></div>
+            <div class="fg"><label>End Date</label><input type="date" id="gd-end"></div>
+            <div class="fg"><label>Max Orders (0 = unlimited)</label><input type="number" id="gd-max" min="0" value="0"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+            <button class="btn btn-danger" onclick="activateGlobalDiscount()">🔥 Activate Global Discount</button>
+            <button class="btn btn-secondary" onclick="deactivateGlobalDiscount()">✕ Deactivate</button>
+          </div>
+        </div>
+
         <div class="card" style="margin-bottom:12px;">
           <div class="card-title">🎟️ Create Promo Code</div>
           <div class="form-grid">
@@ -1611,7 +1628,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
     </div>
     <div style="display:flex;flex-direction:column;gap:9px;">
       <button class="btn btn-primary btn-full" style="padding:13px;font-size:.95rem;" onclick="printAndClose()">🖨 Print Receipt</button>
-      <button class="btn btn-secondary btn-full" onclick="closeSuccessModal()">Skip — Start New Order</button>
+      <button class="btn btn-secondary btn-full" onclick="closeSuccessModal()">Done — View Orders</button>
     </div>
   </div>
 </div>
@@ -1710,10 +1727,20 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   <button class="abn-item" id="moreBtn" onclick="toggleMorePanel()"><span class="abn-ic">⋯</span>More</button>
 </div>
 <div class="abn-more-panel" id="abnMorePanel">
+  <div class="abn-more-item" onclick="mobileNav('neworder');toggleMorePanel()"><span style="font-size:1.2rem;">➕</span>New Order</div>
   <div class="abn-more-item" onclick="mobileNav('pricing');toggleMorePanel()"><span style="font-size:1.2rem;">💰</span>Pricing</div>
   <div class="abn-more-item" onclick="mobileNav('expenditure');toggleMorePanel()"><span style="font-size:1.2rem;">💸</span>Expenses</div>
   <div class="abn-more-item" onclick="mobileNav('reports');toggleMorePanel()"><span style="font-size:1.2rem;">📈</span>Reports</div>
-  <div class="abn-more-item" onclick="mobileNav('riders');toggleMorePanel()"><span style="font-size:1.2rem;">🛵</span>Riders</div>
+  <div class="abn-more-item" onclick="mobileNav('debttracker');toggleMorePanel()"><span style="font-size:1.2rem;">💳</span>Debts</div>
+  <div class="abn-more-item" onclick="mobileNav('promos');toggleMorePanel()"><span style="font-size:1.2rem;">🎟️</span>Promos</div>
+  <div class="abn-more-item" onclick="mobileNav('pettycash');toggleMorePanel()"><span style="font-size:1.2rem;">🪙</span>Petty Cash</div>
+  <div class="abn-more-item" onclick="mobileNav('float');toggleMorePanel()"><span style="font-size:1.2rem;">💵</span>Float</div>
+  <div class="abn-more-item" onclick="mobileNav('turnaround');toggleMorePanel()"><span style="font-size:1.2rem;">⏱️</span>Turnaround</div>
+  <div class="abn-more-item" onclick="mobileNav('complaints');toggleMorePanel()"><span style="font-size:1.2rem;">⚠️</span>Complaints</div>
+  <div class="abn-more-item" onclick="mobileNav('ridertrips');toggleMorePanel()"><span style="font-size:1.2rem;">🛵</span>Rider Trips</div>
+  <div class="abn-more-item" onclick="mobileNav('approvals');toggleMorePanel()"><span style="font-size:1.2rem;">✅</span>Approvals</div>
+  <div class="abn-more-item" onclick="mobileNav('analytics');toggleMorePanel()"><span style="font-size:1.2rem;">🧠</span>Analytics</div>
+  <div class="abn-more-item" onclick="mobileNav('riders');toggleMorePanel()"><span style="font-size:1.2rem;">🏍️</span>Riders</div>
   <div class="abn-more-item" onclick="mobileNav('branches');toggleMorePanel()"><span style="font-size:1.2rem;">🏪</span>Branches</div>
   <div class="abn-more-item" onclick="mobileNav('supplies');toggleMorePanel()"><span style="font-size:1.2rem;">🧴</span>Supplies</div>
   <div class="abn-more-item" onclick="mobileNav('staff');toggleMorePanel()"><span style="font-size:1.2rem;">👥</span>Staff</div>
@@ -1779,6 +1806,17 @@ const DEF = {
     {id:'tr4',name:'Starching',unit:'flat fee',price:4},
   ],
   promos:[],
+  globalDiscount:{
+    active:false,
+    pct:0,
+    label:'',
+    startDate:'',
+    endDate:'',
+    maxOrders:0,      // 0 = unlimited
+    usedCount:0,
+    createdBy:'',
+    createdAt:''
+  },
   deleteRequests:[],
   complaints:[],
   riderTrips:[],
@@ -1886,6 +1924,7 @@ async function saveSettings(){
       nextOrderNum:DB.nextOrderNum||1,
       branchPricing:DB.branchPricing||{},
       promos:DB.promos||[],
+      globalDiscount:DB.globalDiscount||{active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''},
       deleteRequests:DB.deleteRequests||[],
       complaints:DB.complaints||[],
       riderTrips:DB.riderTrips||[],
@@ -2039,6 +2078,7 @@ async function load(){
       DB.nextOrderNum=s.nextOrderNum||DB.nextOrderNum;
       DB.branchPricing=s.branchPricing||{};
       DB.promos=s.promos||[];
+      DB.globalDiscount=s.globalDiscount||{active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''};
       DB.deleteRequests=s.deleteRequests||[];
       DB.complaints=s.complaints||[];
       DB.riderTrips=s.riderTrips||[];
@@ -2672,16 +2712,28 @@ function liveCalc(){
   DB.treatments.forEach(t=>{const cb=document.getElementById('trcb-'+t.id);if(cb&&cb.checked)trT+=t.price;});
 
   const grand=wT+spT+bdT+trT;
+  // Global discount (highest priority — overrides everything)
+  const gdActive=getActiveGlobalDiscount();
+  const gdPct=gdActive?gdActive.pct:0;
+  const gdAmt=gdPct>0?parseFloat((grand*gdPct/100).toFixed(2)):0;
   // Loyalty discount
   const loyPct=selCust?checkLoyalty(selCust):0;
   const loyAmt=loyPct>0?parseFloat((grand*loyPct/100).toFixed(2)):0;
-  // Promo discount (takes precedence over loyalty if both active)
-  const promoPct=activePromo?activePromo.discountPct:0;
+  // Promo code discount
+  const promoPct=(!gdActive&&activePromo)?activePromo.discountPct:0;
   const promoAmt=promoPct>0?parseFloat((grand*promoPct/100).toFixed(2)):0;
-  // Use whichever discount is higher
-  const discPct=promoAmt>=loyAmt?promoPct:loyPct;
-  const discAmt=promoAmt>=loyAmt?promoAmt:loyAmt;
-  const discLabel=promoAmt>=loyAmt&&promoPct>0?'🎟️ '+activePromo.code+' ('+promoPct+'% off)':'⭐ '+loyPct+'% loyalty discount';
+  // Priority: Global > Promo > Loyalty (pick highest)
+  let discPct,discAmt,discLabel;
+  if(gdPct>0){
+    discPct=gdPct;discAmt=gdAmt;
+    discLabel='🔥 '+gdActive.label;
+  } else if(promoAmt>=loyAmt&&promoPct>0){
+    discPct=promoPct;discAmt=promoAmt;
+    discLabel='🎟️ '+(activePromo?.code||'')+' ('+promoPct+'% off)';
+  } else {
+    discPct=loyPct;discAmt=loyAmt;
+    discLabel='⭐ '+loyPct+'% loyalty discount';
+  }
   const grandAfterDisc=grand-discAmt;
 
   const payStatus=document.getElementById('payStatus')?.value||'unpaid';
@@ -2756,6 +2808,13 @@ function printAndClose(){
   if(lastCreatedOrder) openPrintWin(lastCreatedOrder);
   closeModal('successModal');
   showNotif('Receipt printed!','ok');
+  // Admin: redirect to All Orders
+  if(CU?.role==='admin'){
+    const ordersNav=document.querySelector(".a-nav-item[onclick*=\"'orders'\"]");
+    if(ordersNav)showAPage('orders',ordersNav);
+    renderAOrders();
+    clearAdminCust();
+  }
 }
 function closeSuccessModal(){
   closeModal('successModal');
@@ -2791,18 +2850,32 @@ function submitOrder(){
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
   const trT=treatments.reduce((s,i)=>s+i.price,0);
   const subtotal=wT+spT+bdT+trT;
-  // Apply promo discount if active, else loyalty
-  const loyPct=checkLoyalty(selCust);
-  const promoPct=activePromo?activePromo.discountPct:0;
-  const promoAmt=promoPct>0?parseFloat((subtotal*promoPct/100).toFixed(2)):0;
-  const loyAmt=loyPct>0?parseFloat((subtotal*loyPct/100).toFixed(2)):0;
-  const discPct=promoAmt>=loyAmt?promoPct:loyPct;
-  const discAmt=promoAmt>=loyAmt?promoAmt:loyAmt;
-  const promoCode=activePromo?.code||'';
-  const discLabel=promoAmt>=loyAmt&&promoPct>0?'🎟️ '+promoCode+' ('+promoPct+'% off)':'⭐ '+loyPct+'% loyalty';
+  // Global discount (highest priority)
+  const gdActiveS=getActiveGlobalDiscount();
+  const gdPctS=gdActiveS?gdActiveS.pct:0;
+  const gdAmtS=gdPctS>0?parseFloat((subtotal*gdPctS/100).toFixed(2)):0;
+  // Loyalty
+  const loyPctS=checkLoyalty(selCust);
+  const loyAmtS=loyPctS>0?parseFloat((subtotal*loyPctS/100).toFixed(2)):0;
+  // Promo (not used if global discount active)
+  const promoPctS=(!gdActiveS&&activePromo)?activePromo.discountPct:0;
+  const promoAmtS=promoPctS>0?parseFloat((subtotal*promoPctS/100).toFixed(2)):0;
+  let discPct,discAmt,promoCode,discLabel;
+  if(gdPctS>0){
+    discPct=gdPctS;discAmt=gdAmtS;promoCode='';
+    discLabel='🔥 '+gdActiveS.label;
+    // Increment global discount usage
+    if(DB.globalDiscount){DB.globalDiscount.usedCount=(DB.globalDiscount.usedCount||0)+1;}
+  } else if(promoAmtS>=loyAmtS&&promoPctS>0){
+    discPct=promoPctS;discAmt=promoAmtS;promoCode=activePromo?.code||'';
+    discLabel='🎟️ '+promoCode+' ('+promoPctS+'% off)';
+  } else {
+    discPct=loyPctS;discAmt=loyAmtS;promoCode='';
+    discLabel='⭐ '+loyPctS+'% loyalty';
+  }
   const total=subtotal-discAmt;
   // Mark promo as used
-  if(activePromo){
+  if(activePromo&&!gdActiveS){
     const p=DB.promos.find(x=>x.id===activePromo.id);
     if(p)p.usedCount=(p.usedCount||0)+1;
     activePromo=null;
@@ -3434,12 +3507,19 @@ function showAPage(page,el){
     if(page==='supplies'){try{renderSupplies();}catch(e){}}
     if(page==='neworder'){
       const ab=document.getElementById('adminOrderBranch');
-      if(ab)ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-      // Reset
-      clearAdminCust();
+      if(ab){
+        ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+        // Default to first branch
+        if(ab.value&&CU)CU._loginBranch=ab.value;
+      }
+      // Reset form
+      if(typeof clearAdminCust==='function')clearAdminCust();
+      activePromo=null;
+      const pc=document.getElementById('promoCode');if(pc)pc.value='';
+      const ps=document.getElementById('promoStatus');if(ps)ps.textContent='';
     }
     if(page==='debttracker')renderDebtTracker();
-    if(page==='promos')renderPromos();
+    if(page==='promos'){renderPromos();renderGlobalDiscountStatus();}
     if(page==='pettycash'){renderPettyCash();const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='float'){renderFloat();const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='turnaround'){const today=new Date().toISOString().split('T')[0];const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}if(to&&!to.value)to.value=today;renderTurnaround();}
@@ -4613,6 +4693,88 @@ function adminCreateAndSelect(name){
   const c={id:'c'+Date.now(),name:name.trim(),phone:'',address:'',totalOrders:0,totalSpent:0,createdAt:new Date().toISOString()};
   DB.customers.push(c);saveCustomer(c);
   selectAdminCust(c.id);
+}
+
+
+// Keyboard support for PIN pad
+document.addEventListener('keydown', function(e){
+  const ls=document.getElementById('loginScreen');
+  if(!ls||ls.style.display==='none')return; // only on login screen
+  if(e.key>='0'&&e.key<='9') pp(e.key);
+  else if(e.key==='Backspace') pp('D');
+  else if(e.key==='Escape'||e.key==='Delete') pp('C');
+  else if(e.key==='Enter'){
+    const btn=document.getElementById('loginBtn');
+    if(btn&&!btn.disabled)doLogin();
+  }
+});
+
+
+// ══════════════════════════════════════════════════════
+// GLOBAL DISCOUNT
+// ══════════════════════════════════════════════════════
+function getActiveGlobalDiscount(){
+  const gd=DB.globalDiscount;
+  if(!gd||!gd.active)return null;
+  const now=new Date();
+  const start=gd.startDate?new Date(gd.startDate):null;
+  const end=gd.endDate?new Date(gd.endDate+'T23:59:59'):null;
+  if(start&&now<start)return null;
+  if(end&&now>end)return null;
+  if(gd.maxOrders>0&&gd.usedCount>=gd.maxOrders)return null;
+  return gd;
+}
+
+function activateGlobalDiscount(){
+  const pct=parseFloat(document.getElementById('gd-pct')?.value)||0;
+  const label=(document.getElementById('gd-label')?.value||'').trim();
+  const start=document.getElementById('gd-start')?.value;
+  const end=document.getElementById('gd-end')?.value;
+  const max=parseInt(document.getElementById('gd-max')?.value)||0;
+  if(!pct){showNotif('Enter a discount percentage.','err');return;}
+  if(!end){showNotif('Set an end date.','err');return;}
+  DB.globalDiscount={
+    active:true,pct,
+    label:label||pct+'% off all orders',
+    startDate:start||new Date().toISOString().split('T')[0],
+    endDate:end,maxOrders:max,usedCount:0,
+    createdBy:CU?.name||'Admin',
+    createdAt:new Date().toISOString()
+  };
+  saveSettings();
+  renderGlobalDiscountStatus();
+  showNotif('Global discount activated! All orders will get '+pct+'% off.','ok');
+}
+
+function deactivateGlobalDiscount(){
+  if(!confirm('Deactivate global discount?'))return;
+  DB.globalDiscount={active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''};
+  saveSettings();
+  renderGlobalDiscountStatus();
+  showNotif('Global discount deactivated.','ok');
+}
+
+function renderGlobalDiscountStatus(){
+  const el=document.getElementById('globalDiscStatus');
+  if(!el)return;
+  const gd=getActiveGlobalDiscount();
+  const raw=DB.globalDiscount;
+  if(gd){
+    el.innerHTML='<div style="background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:12px 14px;">'
+      +'<div style="font-weight:700;color:#b36b00;font-size:.95rem;">🔥 ACTIVE: '+gd.label+'</div>'
+      +'<div style="font-size:.8rem;color:#7a5000;margin-top:4px;">'
+      +gd.pct+'% off all orders'
+      +(gd.startDate?' · From: '+fmtDate(gd.startDate):'')
+      +' · Until: '+fmtDate(gd.endDate)
+      +(gd.maxOrders>0?' · '+gd.usedCount+'/'+gd.maxOrders+' orders used':'')
+      +'</div></div>';
+  } else if(raw&&raw.pct&&!raw.active){
+    el.innerHTML='<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--muted);">⚪ No active global discount.</div>';
+  } else if(raw&&raw.active&&!gd){
+    el.innerHTML='<div style="background:#fde;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#a00;">⚠️ Global discount expired or limit reached.</div>';
+  } else {
+    el.innerHTML='<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--muted);">⚪ No active global discount.</div>';
+  }
 }
 
 // ── INIT ──
