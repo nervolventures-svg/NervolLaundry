@@ -99,6 +99,8 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
 /* ═══════════════ ADMIN SHELL ═══════════════ */
 #adminApp{display:none;min-height:100vh;}
+#managerApp{display:none;min-height:100vh;}
+#managerApp.active{display:flex !important;}
 #adminApp.active{display:flex !important;}
 .a-sidebar{width:232px;min-height:100vh;background:var(--ink);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100;}
 .a-sb-brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.07);}
@@ -990,6 +992,126 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   </div>
 </div>
 
+<!-- ═══════════ MANAGER APP ═══════════ -->
+<div id="managerApp" style="display:none;min-height:100vh;flex-direction:column;">
+  <!-- TOP BAR -->
+  <div class="a-topbar">
+    <div class="a-brand">NERVOL <em>LAUNDRY</em></div>
+    <div style="font-size:.65rem;color:#4a7a58;letter-spacing:2px;text-transform:uppercase;margin-top:2px;">Manager Console</div>
+    <div class="a-topbar-right">
+      <select id="mgrBranchFilter" class="branch-filter" onchange="mgrFilterBranch()">
+        <option value="all">All Branches</option>
+      </select>
+      <span id="mClock" class="a-clock"></span>
+    </div>
+  </div>
+  <div style="display:flex;flex:1;min-height:0;">
+    <!-- SIDEBAR -->
+    <div class="a-sidebar" id="mgrSidebar">
+      <div class="a-user-info">
+        <div style="font-size:.68rem;color:#4a7a58;text-transform:uppercase;letter-spacing:1px;">Logged in as</div>
+        <div id="mUserName" style="font-weight:700;font-size:1rem;color:#fff;margin-top:2px;">Manager</div>
+      </div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showMgrPage('dashboard',this)"><span class="ic">📊</span> Dashboard</div>
+      <div class="a-nav-item" onclick="showMgrPage('neworder',this)"><span class="ic">➕</span> <strong>New Order</strong></div>
+      <div class="a-nav-item" onclick="showMgrPage('orders',this)"><span class="ic">📋</span> All Orders <span class="n-badge" id="mgrOverdueBadge" style="display:none">!</span></div>
+      <div class="a-nav-item" onclick="showMgrPage('customers',this)"><span class="ic">👤</span> Customers</div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showMgrPage('pricing',this)"><span class="ic">💰</span> Pricing</div>
+      <div class="a-nav-item" onclick="showMgrPage('expenditure',this)"><span class="ic">💸</span> Expenditure</div>
+      <div class="a-nav-item" onclick="showMgrPage('reports',this)"><span class="ic">📈</span> Reports</div>
+      <div class="a-nav-item" onclick="showMgrPage('analytics',this)"><span class="ic">🧠</span> Analytics</div>
+      <div class="a-nav-item" onclick="showMgrPage('plreport',this)"><span class="ic">📑</span> P&amp;L Report</div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showMgrPage('debttracker',this)"><span class="ic">💳</span> Debt Tracker</div>
+      <div class="a-nav-item" onclick="showMgrPage('promos',this)"><span class="ic">🎟️</span> Promo Codes</div>
+      <div class="a-nav-item" onclick="showMgrPage('pettycash',this)"><span class="ic">🪙</span> Petty Cash</div>
+      <div class="a-nav-item" onclick="showMgrPage('float',this)"><span class="ic">💵</span> Cash Float</div>
+      <div class="a-nav-item" onclick="showMgrPage('turnaround',this)"><span class="ic">⏱️</span> Turnaround</div>
+      <div class="a-nav-item" onclick="showMgrPage('complaints',this)"><span class="ic">⚠️</span> Complaints</div>
+      <div class="a-nav-item" onclick="showMgrPage('ridertrips',this)"><span class="ic">🛵</span> Rider Trips</div>
+      <div class="a-nav-item" onclick="showMgrPage('approvals',this)"><span class="ic">✅</span> Approvals <span class="n-badge" id="mgrApprovalsBadge" style="display:none">0</span></div>
+      <div class="a-nav-sep"></div>
+      <div class="a-nav-item" onclick="showMgrPage('supplies',this)"><span class="ic">🧴</span> Supplies</div>
+      <div class="a-nav-item" onclick="showMgrPage('staff',this)"><span class="ic">👥</span> Staff</div>
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+    <!-- BODY -->
+    <div class="a-body">
+      <div class="a-page-header">
+        <div id="mgrPageTitle" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;">DASHBOARD</div>
+      </div>
+
+      <!-- MGR DASHBOARD (reuses admin dashboard elements) -->
+      <div class="a-page active" id="mgr-dashboard">
+        <div id="mgrSupplyAlert" style="display:none;background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;"></div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val green" id="mgr-d-rev">GH₵ 0</div><div class="stat-label">Today Revenue</div></div>
+          <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-val gold" id="mgr-d-orders">0</div><div class="stat-label">Today Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-val red" id="mgr-d-exp">GH₵ 0</div><div class="stat-label">Today Expenses</div></div>
+          <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val blue" id="mgr-d-active">0</div><div class="stat-label">Active Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-val red" id="mgr-d-overdue">0</div><div class="stat-label">Overdue</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Orders</div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Branch</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr></thead><tbody id="mgrDashRecent"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- MGR P&L REPORT -->
+      <div class="a-page" id="mgr-plreport">
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title">📑 Profit &amp; Loss Report</div>
+          <div class="form-grid" style="max-width:500px;margin-bottom:14px;">
+            <div class="fg"><label>Period</label>
+              <select id="plPeriod" onchange="renderPLReport()">
+                <option value="thismonth">This Month</option>
+                <option value="lastmonth">Last Month</option>
+                <option value="thisweek">This Week</option>
+                <option value="lastweek">Last Week</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+            <div class="fg"><label>Branch</label>
+              <select id="plBranch" onchange="renderPLReport()">
+                <option value="all">All Branches</option>
+              </select>
+            </div>
+          </div>
+          <div id="plCustomRange" style="display:none;margin-bottom:14px;">
+            <div class="form-grid" style="max-width:400px;">
+              <div class="fg"><label>From</label><input type="date" id="plFrom" onchange="renderPLReport()"></div>
+              <div class="fg"><label>To</label><input type="date" id="plTo" onchange="renderPLReport()"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="exportPLReport()">📥 Export / Print</button>
+        </div>
+        <div id="plReportContent"></div>
+      </div>
+
+      <!-- MGR PAGES — reuse admin page IDs via showMgrPage routing -->
+      <div class="a-page" id="mgr-neworder"></div>
+      <div class="a-page" id="mgr-orders"></div>
+      <div class="a-page" id="mgr-customers"></div>
+      <div class="a-page" id="mgr-pricing"></div>
+      <div class="a-page" id="mgr-expenditure"></div>
+      <div class="a-page" id="mgr-reports"></div>
+      <div class="a-page" id="mgr-analytics"></div>
+      <div class="a-page" id="mgr-debttracker"></div>
+      <div class="a-page" id="mgr-promos"></div>
+      <div class="a-page" id="mgr-pettycash"></div>
+      <div class="a-page" id="mgr-float"></div>
+      <div class="a-page" id="mgr-turnaround"></div>
+      <div class="a-page" id="mgr-complaints"></div>
+      <div class="a-page" id="mgr-ridertrips"></div>
+      <div class="a-page" id="mgr-approvals"></div>
+      <div class="a-page" id="mgr-supplies"></div>
+      <div class="a-page" id="mgr-staff"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ ADMIN APP ═══════════ -->
 <div id="adminApp">
   <div class="a-sidebar">
@@ -1522,7 +1644,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
           <div class="card-title">Add Staff Member</div>
           <div class="form-grid" style="max-width:600px;margin-bottom:10px;">
             <div class="fg"><label>Full Name</label><input type="text" id="staffName" placeholder="e.g. Abena Owusu"></div>
-            <div class="fg"><label>Role</label><select id="staffRole"><option>Attendant</option><option>Supervisor</option><option>Rider</option></select></div>
+            <div class="fg"><label>Role</label><select id="staffRole"><option>Attendant</option><option>Supervisor</option><option>Manager</option><option>Co-Admin</option><option>Rider</option></select></div>
             <div class="fg"><label>4-Digit PIN</label><input type="text" id="staffPin" maxlength="4" placeholder="1234"></div>
             <div class="fg"><label>Assign Branch</label><select id="staffBranch"></select></div>
           </div>
@@ -1890,6 +2012,7 @@ const DEF = {
   ],
   users:[
     {id:'u0',name:'Admin',pin:'0000',role:'admin',branchId:'b1'},
+    {id:'u0m',name:'Manager',pin:'9999',role:'manager',branchId:'b1'},
     {id:'u1',name:'Ama',pin:'1111',role:'staff',roleLabel:'Attendant',branchId:'b1'},
     {id:'u2',name:'Kofi',pin:'2222',role:'staff',roleLabel:'Attendant',branchId:'b2'},
     {id:'u3',name:'Akua',pin:'3333',role:'staff',roleLabel:'Supervisor',branchId:'b3'},
@@ -2357,8 +2480,8 @@ function buildLogin(){
   bs.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   // Users
   const users = loginMode==='admin'
-    ? DB.users.filter(u=>u.role==='admin')
-    : DB.users.filter(u=>u.role!=='admin');
+    ? DB.users.filter(u=>u.role==='admin'||u.role==='coadmin'||u.role==='manager')
+    : DB.users.filter(u=>u.role!=='admin'&&u.role!=='coadmin'&&u.role!=='manager');
   const ug=document.getElementById('userGrid');if(ug)ug.innerHTML=users.map(u=>
     `<button class="user-btn" id="ub-${u.id}" onclick="selUser('${u.id}')">${u.name}</button>`
   ).join('');
@@ -2406,13 +2529,15 @@ function doLogin(){
     }
   }
   const ls=document.getElementById('loginScreen');if(ls){ls.style.display='none';}
-  // Ensure both apps are fully reset before launching correct one
-  const sa=document.getElementById('staffApp');
-  const aa=document.getElementById('adminApp');
-  if(sa){sa.classList.remove('active');sa.style.display='none';}
-  if(aa){aa.classList.remove('active');aa.style.display='none';}
+  // Reset all apps
+  ['staffApp','adminApp','managerApp'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.classList.remove('active');el.style.display='none';}
+  });
   attachRealtimeListeners();
-  u.role==='admin'?launchAdmin():launchStaff();
+  if(u.role==='admin'||u.role==='coadmin') launchAdmin();
+  else if(u.role==='manager') launchManager();
+  else launchStaff();
 }
 function toggleMode(){
   loginMode=loginMode==='staff'?'admin':'staff';
@@ -4248,7 +4373,8 @@ function addStaff(){
   const n=document.getElementById('staffName').value.trim(),role=document.getElementById('staffRole').value,pin=document.getElementById('staffPin').value.trim(),branchId=document.getElementById('staffBranch').value;
   if(!n){showNotif('Enter name.','err');return;}
   if(!/^\d{4}$/.test(pin)){showNotif('PIN must be 4 digits.','err');return;}
-  DB.users.push({id:'u'+Date.now(),name:n,role:'staff',roleLabel:role,pin,branchId});
+  const sysRole=role==='Manager'?'manager':role==='Co-Admin'?'coadmin':'staff';
+  DB.users.push({id:'u'+Date.now(),name:n,role:sysRole,roleLabel:role,pin,branchId});
   saveUsers();renderStaff();buildLogin();
   document.getElementById('staffName').value='';document.getElementById('staffPin').value='';
   showNotif(n+' added!','ok');
@@ -5106,6 +5232,367 @@ function adminSubmitOrder(){
   checkOverdue();showNotif('Order '+order.id+' created!','ok');
 }
 
+
+// ══════════════════════════════════════════════════════
+// MANAGER APP
+// ══════════════════════════════════════════════════════
+
+function launchManager(){
+  const ma=document.getElementById('managerApp');
+  if(ma){ma.style.display='flex';ma.classList.add('active');}
+  document.getElementById('mUserName').textContent=CU.name;
+  // Populate branch filter
+  const bf=document.getElementById('mgrBranchFilter');
+  if(bf)bf.innerHTML='<option value="all">All Branches</option>'+DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  // Populate P&L branch filter
+  const pb=document.getElementById('plBranch');
+  if(pb)pb.innerHTML='<option value="all">All Branches</option>'+DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  startClock('mClock');
+  checkOverdue();
+  updateApprovalsBadge();
+  updateMgrApprovalsBadge();
+  showMgrPage('dashboard',document.querySelector('#mgrSidebar .a-nav-item'));
+}
+
+function mgrFilterBranch(){
+  // Re-render current page with new branch filter
+  const active=document.querySelector('#mgrSidebar .a-nav-item.active');
+  if(active)active.click();
+}
+
+function showMgrPage(page, el){
+  // Hide all mgr pages
+  document.querySelectorAll('#managerApp .a-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('#mgrSidebar .a-nav-item').forEach(i=>i.classList.remove('active'));
+  
+  const pg=document.getElementById('mgr-'+page);
+  if(pg)pg.classList.add('active');
+  if(el)el.classList.add('active');
+  
+  const titleEl=document.getElementById('mgrPageTitle');
+  if(titleEl&&el)titleEl.textContent=el.textContent.trim().toUpperCase();
+
+  // Route to appropriate render function
+  if(page==='dashboard')renderMgrDashboard();
+  else if(page==='orders'){renderMgrOrders();}
+  else if(page==='customers'){renderMgrCustomers();}
+  else if(page==='pricing'){renderMgrPricing();}
+  else if(page==='expenditure'){renderMgrExp();}
+  else if(page==='reports'){renderMgrReports();}
+  else if(page==='analytics'){try{initAnalyticsFilters();renderAnalytics();}catch(e){}}
+  else if(page==='plreport'){renderPLReport();}
+  else if(page==='debttracker'){renderMgrDebtTracker();}
+  else if(page==='promos'){renderMgrPromos();}
+  else if(page==='pettycash'){renderMgrPettyCash();}
+  else if(page==='float'){renderMgrFloat();}
+  else if(page==='turnaround'){renderMgrTurnaround();}
+  else if(page==='complaints'){renderMgrComplaints();}
+  else if(page==='ridertrips'){renderMgrRiderTrips();}
+  else if(page==='approvals'){renderMgrApprovals();}
+  else if(page==='supplies'){renderMgrSupplies();}
+  else if(page==='staff'){renderMgrStaff();}
+  else if(page==='neworder'){renderMgrNewOrder();}
+}
+
+function updateMgrApprovalsBadge(){
+  const n=(DB.deleteRequests||[]).filter(r=>r.status==='pending').length;
+  const el=document.getElementById('mgrApprovalsBadge');
+  if(el){el.textContent=n;el.style.display=n>0?'inline-flex':'none';}
+  const el2=document.getElementById('mgrOverdueBadge');
+  const od=DB.orders.filter(o=>isOverdue(o)).length;
+  if(el2){el2.style.display=od>0?'inline-flex':'none';}
+}
+
+// ─── MGR DASHBOARD ───────────────────────────────────
+function renderMgrDashboard(){
+  const today=new Date().toDateString();
+  const todayOrders=DB.orders.filter(o=>new Date(o.createdAt).toDateString()===today);
+  const rev=todayOrders.filter(o=>o.payStatus==='paid'||o.payStatus==='partial').reduce((s,o)=>s+(o.payStatus==='paid'?o.total:(o.depositPaid||0)),0);
+  const exp=DB.expenditures.filter(e=>new Date(e.createdAt).toDateString()===today).reduce((s,e)=>s+e.amount,0);
+  const active=DB.orders.filter(o=>['pending','washing','ready'].includes(o.status)).length;
+  const overdue=DB.orders.filter(o=>isOverdue(o)).length;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('mgr-d-rev','GH₵'+rev.toFixed(2));
+  set('mgr-d-orders',todayOrders.length);
+  set('mgr-d-exp','GH₵'+exp.toFixed(2));
+  set('mgr-d-active',active);
+  set('mgr-d-overdue',overdue);
+  const tbody=document.getElementById('mgrDashRecent');
+  if(tbody){
+    const recent=DB.orders.slice(0,10);
+    tbody.innerHTML=!recent.length
+      ?'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:18px;">No orders yet.</td></tr>'
+      :recent.map(o=>'<tr><td><span class="oid">'+o.id+'</span></td><td>'+o.customerName+'</td><td>'+branchName(o.branchId)+'</td><td><strong>GH₵'+o.total.toFixed(2)+'</strong></td><td>'+payBadge(o.payStatus)+'</td><td>'+statusBadge(o.status)+'</td><td style="font-size:.74rem;color:var(--muted);">'+fmtDateShort(o.createdAt)+'</td></tr>').join('');
+  }
+}
+
+// ─── MGR ORDERS ──────────────────────────────────────
+function renderMgrOrders(){
+  const pg=document.getElementById('mgr-orders');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-orders')?.innerHTML||'<p style="color:var(--muted);padding:20px;">Loading orders...</p>';
+  renderAOrders(); // reuse admin orders render
+}
+
+// ─── MGR CUSTOMERS ───────────────────────────────────
+function renderMgrCustomers(){
+  const pg=document.getElementById('mgr-customers');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-customers')?.innerHTML||'';
+  renderCustomers();
+}
+
+// ─── MGR PRICING (EDITABLE) ──────────────────────────
+function renderMgrPricing(){
+  const pg=document.getElementById('mgr-pricing');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-pricing')?.innerHTML||'';
+  renderPricingPanel();
+}
+
+// ─── MGR EXPENDITURE ─────────────────────────────────
+function renderMgrExp(){
+  const pg=document.getElementById('mgr-expenditure');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-expenditure')?.innerHTML||'';
+  renderExpBody();
+}
+
+// ─── MGR REPORTS ─────────────────────────────────────
+function renderMgrReports(){
+  const pg=document.getElementById('mgr-reports');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-reports')?.innerHTML||'';
+  try{renderReports();}catch(e){}
+}
+
+// ─── MGR DEBT TRACKER ────────────────────────────────
+function renderMgrDebtTracker(){
+  const pg=document.getElementById('mgr-debttracker');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-debttracker')?.innerHTML||'';
+  renderDebtTracker();
+}
+
+// ─── MGR PROMOS ──────────────────────────────────────
+function renderMgrPromos(){
+  const pg=document.getElementById('mgr-promos');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-promos')?.innerHTML||'';
+  renderPromos();renderGlobalDiscountStatus();
+}
+
+// ─── MGR PETTY CASH ──────────────────────────────────
+function renderMgrPettyCash(){
+  const pg=document.getElementById('mgr-pettycash');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-pettycash')?.innerHTML||'';
+  renderPettyCash();
+  const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+  const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+}
+
+// ─── MGR FLOAT ───────────────────────────────────────
+function renderMgrFloat(){
+  const pg=document.getElementById('mgr-float');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-float')?.innerHTML||'';
+  renderFloat();
+  const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+  const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+}
+
+// ─── MGR TURNAROUND ──────────────────────────────────
+function renderMgrTurnaround(){
+  const pg=document.getElementById('mgr-turnaround');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-turnaround')?.innerHTML||'';
+  const today=new Date().toISOString().split('T')[0];
+  const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');
+  if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}
+  if(to&&!to.value)to.value=today;
+  renderTurnaround();
+}
+
+// ─── MGR COMPLAINTS (WITH RESOLVE) ───────────────────
+function renderMgrComplaints(){
+  const pg=document.getElementById('mgr-complaints');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-complaints')?.innerHTML||'';
+  renderAdminComplaints(); // Manager can resolve complaints
+}
+
+// ─── MGR RIDER TRIPS ─────────────────────────────────
+function renderMgrRiderTrips(){
+  const pg=document.getElementById('mgr-ridertrips');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-ridertrips')?.innerHTML||'';
+  renderRiderTrips();
+  const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+  const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+}
+
+// ─── MGR APPROVALS (CAN APPROVE/DENY) ────────────────
+function renderMgrApprovals(){
+  const pg=document.getElementById('mgr-approvals');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-approvals')?.innerHTML||'';
+  renderApprovals(); // Manager can approve/deny delete requests
+}
+
+// ─── MGR SUPPLIES ────────────────────────────────────
+function renderMgrSupplies(){
+  const pg=document.getElementById('mgr-supplies');if(!pg)return;
+  pg.innerHTML=document.getElementById('ap-supplies')?.innerHTML||'';
+  renderSupplies();
+}
+
+// ─── MGR STAFF (VIEW ONLY) ───────────────────────────
+function renderMgrStaff(){
+  const pg=document.getElementById('mgr-staff');if(!pg)return;
+  // Staff view-only table for manager
+  pg.innerHTML='<div class="card"><div class="card-title">👥 Staff (View Only)</div>'
+    +'<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>Status</th></tr></thead>'
+    +'<tbody>'+DB.users.filter(u=>u.role==='staff').map(u=>'<tr>'
+      +'<td><strong>'+u.name+'</strong></td>'
+      +'<td>'+((u.roleLabel)||'Staff')+'</td>'
+      +'<td>'+branchName(u.branchId)+'</td>'
+      +'<td><span class="badge '+(u.active===false?'badge-pending':'badge-ready')+'">'+(u.active===false?'Inactive':'Active')+'</span></td>'
+    +'</tr>').join('')+'</tbody></table></div></div>';
+}
+
+// ─── MGR NEW ORDER ───────────────────────────────────
+function renderMgrNewOrder(){
+  const pg=document.getElementById('mgr-neworder');if(!pg)return;
+  // Clone the admin new order page content
+  pg.innerHTML=document.getElementById('ap-neworder')?.innerHTML||'';
+  const ab=document.getElementById('adminOrderBranch');
+  if(ab)ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  clearAdminCust();
+  setTimeout(()=>admInitOrderForm(),50);
+}
+
+// ─── P&L REPORT ──────────────────────────────────────
+function renderPLReport(){
+  const period=document.getElementById('plPeriod')?.value||'thismonth';
+  const branchId=document.getElementById('plBranch')?.value||'all';
+  const custom=document.getElementById('plCustomRange');
+  if(custom)custom.style.display=period==='custom'?'block':'none';
+
+  const now=new Date();
+  let from,to;
+  if(period==='thismonth'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);}
+  else if(period==='lastmonth'){from=new Date(now.getFullYear(),now.getMonth()-1,1);to=new Date(now.getFullYear(),now.getMonth(),0,23,59,59);}
+  else if(period==='thisweek'){const d=new Date();d.setDate(d.getDate()-d.getDay());from=new Date(d.setHours(0,0,0));to=new Date();}
+  else if(period==='lastweek'){const d=new Date();d.setDate(d.getDate()-d.getDay()-7);from=new Date(d.setHours(0,0,0));const d2=new Date(d);d2.setDate(d2.getDate()+6);to=new Date(d2.setHours(23,59,59));}
+  else if(period==='custom'){
+    const f=document.getElementById('plFrom')?.value;const t=document.getElementById('plTo')?.value;
+    if(!f||!t){document.getElementById('plReportContent').innerHTML='<p style="color:var(--muted)">Select a date range.</p>';return;}
+    from=new Date(f);to=new Date(t+'T23:59:59');
+  }
+
+  const filterOrder=o=>{
+    const d=new Date(o.createdAt);
+    const inDate=d>=from&&d<=to;
+    const inBranch=branchId==='all'||o.branchId===branchId;
+    return inDate&&inBranch;
+  };
+  const filterExp=e=>{
+    const d=new Date(e.createdAt);
+    const inDate=d>=from&&d<=to;
+    const inBranch=branchId==='all'||e.branchId===branchId;
+    return inDate&&inBranch;
+  };
+
+  const orders=DB.orders.filter(filterOrder);
+  const exps=DB.expenditures.filter(filterExp);
+  const petty=(DB.pettyCash||[]).filter(filterExp);
+
+  // Revenue
+  const grossRev=orders.reduce((s,o)=>s+o.total,0);
+  const collected=orders.filter(o=>o.status==='collected').reduce((s,o)=>s+o.total,0);
+  const uncollected=orders.filter(o=>o.status!=='collected'&&o.balanceDue>0).reduce((s,o)=>s+o.balanceDue,0);
+  const deposits=orders.filter(o=>o.payStatus==='partial').reduce((s,o)=>s+(o.depositPaid||0),0);
+  const cashIn=orders.filter(o=>o.payStatus==='paid'||o.payStatus==='momo').reduce((s,o)=>s+o.total,0)+deposits;
+
+  // Expenses
+  const totalExp=exps.reduce((s,e)=>s+e.amount,0);
+  const totalPetty=petty.reduce((s,e)=>s+e.amount,0);
+  const totalCosts=totalExp+totalPetty;
+
+  // P&L
+  const grossProfit=grossRev-totalCosts;
+  const margin=grossRev>0?(grossProfit/grossRev*100):0;
+
+  // By branch
+  const branches=branchId==='all'?DB.branches.filter(b=>b.active):[DB.branches.find(b=>b.id===branchId)].filter(Boolean);
+  const branchRows=branches.map(b=>{
+    const bOrders=orders.filter(o=>o.branchId===b.id);
+    const bRev=bOrders.reduce((s,o)=>s+o.total,0);
+    const bExp=exps.filter(e=>e.branchId===b.id).reduce((s,e)=>s+e.amount,0)+petty.filter(e=>e.branchId===b.id).reduce((s,e)=>s+e.amount,0);
+    const bProfit=bRev-bExp;
+    return'<tr><td>'+b.name+'</td><td>'+bOrders.length+'</td><td>GH₵'+bRev.toFixed(2)+'</td><td>GH₵'+bExp.toFixed(2)+'</td><td style="color:'+(bProfit>=0?'var(--accent)':'var(--accent2)')+'"><strong>GH₵'+bProfit.toFixed(2)+'</strong></td><td>'+(bRev>0?(bProfit/bRev*100).toFixed(1)+'%':'—')+'</td></tr>';
+  }).join('');
+
+  // Service breakdown
+  const wRev=orders.reduce((s,o)=>s+(o.wTotal||0),0);
+  const spRev=orders.reduce((s,o)=>s+(o.spTotal||0),0);
+  const bdRev=orders.reduce((s,o)=>s+(o.bdTotal||0),0);
+  const trRev=orders.reduce((s,o)=>s+(o.trTotal||0),0);
+
+  // Expense by category
+  const expByCat={};
+  exps.forEach(e=>{expByCat[e.cat]=(expByCat[e.cat]||0)+e.amount;});
+  const expCatRows=Object.entries(expByCat).map(([cat,amt])=>'<tr><td>'+cat+'</td><td>GH₵'+amt.toFixed(2)+'</td><td>'+(grossRev>0?(amt/grossRev*100).toFixed(1)+'%':'—')+'</td></tr>').join('');
+
+  const periodLabel=period==='thismonth'?new Date().toLocaleString('default',{month:'long',year:'numeric'}):period==='lastmonth'?new Date(now.getFullYear(),now.getMonth()-1).toLocaleString('default',{month:'long',year:'numeric'}):period==='thisweek'?'This Week':period==='lastweek'?'Last Week':document.getElementById('plFrom')?.value+' → '+document.getElementById('plTo')?.value;
+
+  document.getElementById('plReportContent').innerHTML=`
+    <div id="plPrintArea">
+    <div style="text-align:center;margin-bottom:18px;padding:16px;background:var(--ink);color:#fff;border-radius:var(--r);">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;">NERVOL LAUNDRY</div>
+      <div style="font-size:.8rem;color:#4a7a58;margin-top:2px;">PROFIT & LOSS REPORT — ${periodLabel.toUpperCase()}</div>
+      <div style="font-size:.75rem;color:#6a9a7a;margin-top:2px;">${branchId==='all'?'All Branches':branchName(branchId)}</div>
+    </div>
+
+    <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-val green">GH₵${grossRev.toFixed(2)}</div><div class="stat-label">Gross Revenue</div></div>
+      <div class="stat-card"><div class="stat-val red">GH₵${totalCosts.toFixed(2)}</div><div class="stat-label">Total Costs</div></div>
+      <div class="stat-card"><div class="stat-val ${grossProfit>=0?'green':'red'}">GH₵${grossProfit.toFixed(2)}</div><div class="stat-label">Net Profit (${margin.toFixed(1)}%)</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card">
+        <div class="card-title">💰 Revenue Breakdown</div>
+        <table class="tbl"><tbody>
+          <tr><td>Gross Revenue</td><td><strong>GH₵${grossRev.toFixed(2)}</strong></td></tr>
+          <tr><td>Cash Collected</td><td>GH₵${cashIn.toFixed(2)}</td></tr>
+          <tr><td>Outstanding Balance</td><td style="color:var(--accent2);">GH₵${uncollected.toFixed(2)}</td></tr>
+          <tr><td style="padding-top:8px;border-top:1px solid var(--border);">Wash & Fold/Iron</td><td>GH₵${wRev.toFixed(2)}</td></tr>
+          <tr><td>Special Items</td><td>GH₵${spRev.toFixed(2)}</td></tr>
+          <tr><td>Bedding</td><td>GH₵${bdRev.toFixed(2)}</td></tr>
+          <tr><td>Treatments</td><td>GH₵${trRev.toFixed(2)}</td></tr>
+          <tr><td>Total Orders</td><td>${orders.length}</td></tr>
+          <tr><td>Avg Order Value</td><td>GH₵${orders.length?( grossRev/orders.length).toFixed(2):'0.00'}</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div class="card-title">💸 Cost Breakdown</div>
+        <table class="tbl"><tbody>
+          <tr><td>Operational Expenses</td><td><strong>GH₵${totalExp.toFixed(2)}</strong></td></tr>
+          <tr><td>Petty Cash</td><td>GH₵${totalPetty.toFixed(2)}</td></tr>
+          <tr><td style="font-weight:700;border-top:1px solid var(--border);padding-top:8px;">Total Costs</td><td style="font-weight:700;">GH₵${totalCosts.toFixed(2)}</td></tr>
+          <tr><td style="padding-top:8px;border-top:1px solid var(--border);color:${grossProfit>=0?'var(--accent)':'var(--accent2)'};font-weight:700;">Net Profit</td><td style="color:${grossProfit>=0?'var(--accent)':'var(--accent2)'};font-weight:700;">GH₵${grossProfit.toFixed(2)}</td></tr>
+          <tr><td>Profit Margin</td><td style="font-weight:700;">${margin.toFixed(1)}%</td></tr>
+        </tbody></table>
+        ${expCatRows?'<div class="card-title" style="margin-top:12px;">Expenses by Category</div><table class="tbl"><thead><tr><th>Category</th><th>Amount</th><th>% Rev</th></tr></thead><tbody>'+expCatRows+'</tbody></table>':''}
+      </div>
+    </div>
+
+    ${branches.length>1?'<div class="card" style="margin-bottom:14px;"><div class="card-title">🏪 Performance by Branch</div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Branch</th><th>Orders</th><th>Revenue</th><th>Costs</th><th>Profit</th><th>Margin</th></tr></thead><tbody>'+branchRows+'</tbody></table></div></div>':''}
+    </div>
+  `;
+}
+
+function exportPLReport(){
+  const area=document.getElementById('plPrintArea');
+  if(!area){showNotif('Generate a report first.','err');return;}
+  const win=window.open('','_blank');
+  win.document.write('<html><head><title>P&L Report — Nervol Laundry</title>');
+  win.document.write('<style>body{font-family:Arial,sans-serif;padding:20px;color:#1a2e20;}table{width:100%;border-collapse:collapse;margin-bottom:12px;}td,th{padding:7px 10px;border-bottom:1px solid #ddd;font-size:.85rem;}th{background:#f0f5f0;}.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}.stat-card{background:#f8faf8;border:1px solid #ddd;border-radius:8px;padding:14px;text-align:center;}.stat-val{font-size:1.3rem;font-weight:700;}.green{color:#2a7a4a;}.red{color:#c94a1a;}.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:14px;}.card-title{font-weight:700;margin-bottom:10px;}</style>');
+  win.document.write('</head><body>'+area.innerHTML+'</body></html>');
+  win.document.close();
+  setTimeout(()=>win.print(),300);
+}
+
 // ── INIT ──
 (async () => {
   await initFirebase();
@@ -5128,6 +5615,9 @@ function updateApprovalsBadge(){
   const n=(DB.deleteRequests||[]).filter(r=>r.status==='pending').length;
   const el=document.getElementById('approvalsBadge');
   if(el){el.textContent=n;el.style.display=n>0?'inline-flex':'none';}
+  // Also update manager badge
+  const el2=document.getElementById('mgrApprovalsBadge');
+  if(el2){el2.textContent=n;el2.style.display=n>0?'inline-flex':'none';}
 }
 
 // ══════════════════════════════════════════════════════
