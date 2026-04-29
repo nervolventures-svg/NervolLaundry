@@ -663,6 +663,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
                   <option value="delivery">Home Delivery (Rider)</option>
                 </select>
               </div>
+              <div class="fg">
+                <label>Order Type</label>
+                <select id="orderType" onchange="liveCalc()" style="border:2px solid transparent;">
+                  <option value="standard">⏱ Standard (up to 3 days)</option>
+                  <option value="express">⚡ Express (within 24hrs)</option>
+                </select>
+              </div>
               <div class="fg" id="riderFieldWrap">
                 <label>Assign Rider</label>
                 <select id="riderSelect" onchange="liveCalc()"><option value="">— No rider —</option></select>
@@ -765,7 +772,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             </div>
             <div>
               <div id="loyalty-badge" style="display:none;font-size:.7rem;color:#f0b840;text-align:right;margin-bottom:2px;"></div>
-              <div class="total-grand" id="grandDisplay">GH₵ 0.00</div>
+              <div id="expressBadge" style="display:none;background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:8px 14px;margin-bottom:6px;font-size:.84rem;font-weight:600;color:#b36b00;"></div>
+            <div id="expressBadge" style="display:none;background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:8px 14px;margin-bottom:6px;font-size:.84rem;font-weight:600;color:#b36b00;"></div>
+            <div class="total-grand" id="grandDisplay">GH₵ 0.00</div>
             </div>
           </div>
           <button class="btn btn-primary btn-full" style="margin-top:10px;padding:13px;font-size:.95rem;" onclick="submitOrder()">✅ Create Order</button>
@@ -1304,6 +1313,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
                 <option value="delivery">Home Delivery</option>
               </select>
             </div>
+            <div class="fg">
+              <label>Order Type</label>
+              <select id="adm-orderType" onchange="admLiveCalc()" style="border:2px solid transparent;">
+                <option value="standard">⏱ Standard (up to 3 days)</option>
+                <option value="express">⚡ Express (within 24hrs)</option>
+              </select>
+            </div>
           </div>
           <div class="fg" id="adm-depositWrap" style="display:none;">
             <label>Deposit Amount (GH₵)</label>
@@ -1329,6 +1345,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             <button class="btn btn-secondary btn-sm" onclick="admApplyPromo()">Apply</button>
             <span id="adm-promoStatus" style="font-size:.78rem;padding-bottom:4px;"></span>
           </div>
+          <div id="adm-expressBadge" style="display:none;background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:8px 14px;margin-bottom:4px;font-size:.84rem;font-weight:600;color:#b36b00;"></div>
           <div class="grand-display" id="adm-grandDisplay">GH₵ 0.00</div>
           <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px;font-size:1rem;" onclick="adminSubmitOrder()">✅ Submit Order</button>
         </div>
@@ -1480,6 +1497,23 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             <div style="font-size:.82rem;color:var(--muted);" id="loyaltyPreview"></div>
           </div>
         </div>
+        <!-- EXPRESS ORDER SETTINGS -->
+        <div class="card" style="margin-top:14px;border:2px solid #f0a500;">
+          <div class="card-title" style="color:#b36b00;">⚡ Express Order Settings</div>
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">Express orders are charged at a multiplier of the standard price. Set the multiplier below.</p>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div class="fg" style="max-width:200px;margin-bottom:0;">
+              <label>Express Multiplier (e.g. 1.75 = 75% surcharge)</label>
+              <input type="number" id="expressMultInput" min="1" max="5" step="0.05" value="1.75" style="max-width:120px;">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveExpressMultiplier()" style="margin-top:18px;">💾 Save</button>
+            <span id="expressMultStatus" style="font-size:.8rem;color:var(--accent);margin-top:18px;"></span>
+          </div>
+          <div style="margin-top:10px;background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.82rem;">
+            Current: <strong id="expressMultDisplay">×1.75</strong> — a GH₵100 order becomes <strong id="expressMultExample">GH₵175</strong> as express
+          </div>
+        </div>
+
       </div>
 
       <!-- EXPENDITURE -->
@@ -2067,6 +2101,7 @@ const DEF = {
   quotes:[],
   momoLogs:[],
   branchPricing:{},
+  expressMultiplier:1.75,
   nextOrderNum:1,
 };
 
@@ -2166,6 +2201,7 @@ async function saveSettings(){
       nextOrderNum:DB.nextOrderNum||1,
       branchPricing:DB.branchPricing||{},
       promos:DB.promos||[],
+      expressMultiplier:DB.expressMultiplier||1.75,
       globalDiscount:DB.globalDiscount||{active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''},
       deleteRequests:DB.deleteRequests||[],
       complaints:DB.complaints||[],
@@ -2320,6 +2356,7 @@ async function load(){
       DB.nextOrderNum=s.nextOrderNum||DB.nextOrderNum;
       DB.branchPricing=s.branchPricing||{};
       DB.promos=s.promos||[];
+      DB.expressMultiplier=s.expressMultiplier||1.75;
       DB.globalDiscount=s.globalDiscount||{active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''};
       DB.deleteRequests=s.deleteRequests||[];
       DB.complaints=s.complaints||[];
@@ -2955,7 +2992,21 @@ function liveCalc(){
   // Treatments
   DB.treatments.forEach(t=>{const cb=document.getElementById('trcb-'+t.id);if(cb&&cb.checked)trT+=t.price;});
 
-  const grand=wT+spT+bdT+trT;
+  // Express surcharge
+  const orderTypeEl=document.getElementById('orderType');
+  const isExpress=orderTypeEl&&orderTypeEl.value==='express';
+  const expMult=isExpress?(DB.expressMultiplier||1.75):1;
+  const baseGrand=wT+spT+bdT+trT;
+  const expressCharge=isExpress?parseFloat((baseGrand*(expMult-1)).toFixed(2)):0;
+  const grand=parseFloat((baseGrand*expMult).toFixed(2));
+  // Show/hide express badge
+  const expBadge=document.getElementById('expressBadge');
+  if(expBadge){
+    expBadge.style.display=isExpress?'block':'none';
+    expBadge.textContent='⚡ Express surcharge: +GH₵'+expressCharge.toFixed(2)+' (×'+expMult+')';
+  }
+  // Style the orderType select
+  if(orderTypeEl)orderTypeEl.style.border=isExpress?'2px solid #f0a500':'2px solid transparent';
   // Global discount (highest priority — overrides everything)
   const gdActive=getActiveGlobalDiscount();
   const gdPct=gdActive?gdActive.pct:0;
@@ -3093,7 +3144,12 @@ function submitOrder(){
   const spT=specialItems.reduce((s,i)=>s+i.subtotal,0);
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
   const trT=treatments.reduce((s,i)=>s+i.price,0);
-  const subtotal=wT+spT+bdT+trT;
+  const admIsExpress2=(document.getElementById('adm-orderType')?.value==='express');
+  const admExpMult2=admIsExpress2?(DB.expressMultiplier||1.75):1;
+  const isExpress2=(document.getElementById('orderType')?.value==='express');
+  const expMult2=isExpress2?(DB.expressMultiplier||1.75):1;
+  const baseSubtotal=wT+spT+bdT+trT;
+  const subtotal=parseFloat((baseSubtotal*expMult2).toFixed(2));
   // Global discount (highest priority)
   const gdActiveS=getActiveGlobalDiscount();
   const gdPctS=gdActiveS?gdActiveS.pct:0;
@@ -3135,6 +3191,8 @@ function submitOrder(){
     customerId:selCust.id,customerName:selCust.name,customerPhone:selCust.phone,
     branchId:CU._loginBranch,
     deliveryType:document.getElementById('deliveryType').value,
+    orderType:document.getElementById('orderType')?.value||'standard',
+    expressMultiplier:isExpress2?(DB.expressMultiplier||1.75):1,
     riderId,
     notes:document.getElementById('orderNotes').value.trim(),
     weightItems,specialItems,beddingItems,treatments,
@@ -3211,6 +3269,10 @@ function buildTicketHTML(o){
   }
   if(o.discAmt>0){
     body+=`<div class="row disc-row"><span>Loyalty Discount (${o.discPct}%)</span><span>-GH₵${o.discAmt.toFixed(2)}</span></div>`;
+  }
+  // Show express badge on receipt
+  if(o.orderType==='express'){
+    body+='<div class="t-row" style="color:#f0a500;"><span>⚡ Express Order (×'+(o.expressMultiplier||1.75)+')</span><span>PRIORITY</span></div>';
   }
   const payTxt = o.payStatus==='paid'?'Fully Paid':o.payStatus==='partial'?`Deposit Paid: GH₵${(o.depositPaid||0).toFixed(2)}`:'Unpaid';
   const brn = branchName(o.branchId).toUpperCase();
@@ -3446,7 +3508,7 @@ function renderBoard(){
       +'<td style="font-size:.76rem;max-width:160px;">'+orderSum(o)+'</td>'
       +'<td><strong>GH&#x20B5;'+o.total.toFixed(2)+'</strong></td>'
       +'<td>'+payBadge(o.payStatus)+balDiv+'</td>'
-      +'<td>'+statusBadge(o.status)+'</td>'
+      +'<td>'+statusBadge(o.status)+(o.orderType==='express'?'<span class="badge" style="background:#f0a500;color:#000;font-size:.62rem;margin-left:3px;">⚡</span>':'')+'</td>'
       +'<td style="font-size:.74rem;color:var(--muted);">'+fmtDate(o.createdAt)+'</td>'
       +'<td><div class="tbl-actions">'
       +'<button class="btn btn-sm btn-secondary" onclick="openStatusModal(\''+o.id+'\')">Update</button>'
@@ -3538,7 +3600,7 @@ function confirmCollection(){
 // NOTIFICATION ENGINE — ALL STATUSES, ALL CHANNELS
 // ══════════════════════════════════════════════════════
 const STATUS_MSGS={
-  pending: function(o){return 'Hello '+o.customerName+'! 👋\n\nWe have received your laundry order '+o.id+' at Nervol Laundry — '+branchName(o.branchId)+'.\n\nYour items are in the queue and will be washed shortly.\n\nTotal: GH₵'+o.total.toFixed(2)+(o.balanceDue>0?'\nBalance Due: GH₵'+o.balanceDue.toFixed(2):'')+'\n\nWe will update you when washing begins. Thank you!';},
+  pending: function(o){return 'Hello '+o.customerName+'! 👋\n\nWe have received your '+(o.orderType==='express'?'⚡ EXPRESS ':'')+'laundry order '+o.id+' at Nervol Laundry — '+branchName(o.branchId)+'.\n\nYour items are in the queue and will be washed shortly.\n\nTotal: GH₵'+o.total.toFixed(2)+(o.balanceDue>0?'\nBalance Due: GH₵'+o.balanceDue.toFixed(2):'')+'\n\nWe will update you when washing begins. Thank you!';},
   washing: function(o){return 'Hello '+o.customerName+'! 🫧\n\nYour laundry order '+o.id+' at Nervol Laundry — '+branchName(o.branchId)+' is now being washed.\n\nWe will notify you as soon as it is ready for collection.\n\nThank you for choosing Nervol Laundry!';},
   ready:   function(o){return 'Hello '+o.customerName+'! ✅\n\nYour laundry order '+o.id+' is READY for collection at Nervol Laundry — '+branchName(o.branchId)+'.\n\nTotal: GH₵'+o.total.toFixed(2)+(o.balanceDue>0?'\nBalance Due: GH₵'+o.balanceDue.toFixed(2)+'\nPlease bring the exact amount.':'\nFully Paid ✅')+'\n\nPlease collect at your earliest convenience. Thank you!';},
   delivery:function(o){return 'Hello '+o.customerName+'! 🛵\n\nYour laundry order '+o.id+' from Nervol Laundry — '+branchName(o.branchId)+' is on its way to you!\n\nOur rider is heading to your location. Please be available to receive your items.\n\nTotal: GH₵'+o.total.toFixed(2)+(o.balanceDue>0?'\nBalance Due on Delivery: GH₵'+o.balanceDue.toFixed(2):'')+'\n\nThank you for choosing Nervol Laundry!';},
@@ -5110,7 +5172,15 @@ function admLiveCalc(){
     const el=document.getElementById('adbs-'+row.id);if(el)el.textContent='GH₵'+sub.toFixed(2);
   });
   DB.treatments.forEach(t=>{const cb=document.getElementById('adtrcb-'+t.id);if(cb&&cb.checked)trT+=t.price;});
-  const grand=wT+spT+bdT+trT;
+  const admOrderTypeEl=document.getElementById('adm-orderType');
+  const admIsExpress=admOrderTypeEl&&admOrderTypeEl.value==='express';
+  const admExpMult=admIsExpress?(DB.expressMultiplier||1.75):1;
+  const admBaseGrand=wT+spT+bdT+trT;
+  const admExpressCharge=admIsExpress?parseFloat((admBaseGrand*(admExpMult-1)).toFixed(2)):0;
+  const grand=parseFloat((admBaseGrand*admExpMult).toFixed(2));
+  const admExpBadge=document.getElementById('adm-expressBadge');
+  if(admExpBadge){admExpBadge.style.display=admIsExpress?'block':'none';admExpBadge.textContent='⚡ Express surcharge: +GH₵'+admExpressCharge.toFixed(2)+' (×'+admExpMult+')';}
+  if(admOrderTypeEl)admOrderTypeEl.style.border=admIsExpress?'2px solid #f0a500':'2px solid transparent';
   // Discounts
   const gdA=getActiveGlobalDiscount();
   const gdP=gdA?gdA.pct:0;
@@ -5185,7 +5255,7 @@ function adminSubmitOrder(){
   const spT=specialItems.reduce((s,i)=>s+i.subtotal,0);
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
   const trT=treatments.reduce((s,i)=>s+i.price,0);
-  const subtotal=wT+spT+bdT+trT;
+  const subtotal=parseFloat(((wT+spT+bdT+trT)*admExpMult2).toFixed(2));
   // Discounts
   const gdA=getActiveGlobalDiscount();
   const gdP=gdA?gdA.pct:0;
@@ -5204,6 +5274,8 @@ function adminSubmitOrder(){
     customerId:selCust.id,customerName:selCust.name,customerPhone:selCust.phone,
     branchId:CU._loginBranch,
     deliveryType:document.getElementById('adm-deliveryType')?.value||'pickup',
+    orderType:document.getElementById('adm-orderType')?.value||'standard',
+    expressMultiplier:admIsExpress2?admExpMult2:1,
     riderId,notes:document.getElementById('adm-orderNotes')?.value||'',
     weightItems,specialItems,beddingItems,treatments,
     wTotal:wT,spTotal:spT,bdTotal:bdT,trTotal:trT,subtotal,discPct,discAmt,promoCode,discLabel,total,
@@ -5276,7 +5348,7 @@ function showMgrPage(page, el){
   if(page==='dashboard')renderMgrDashboard();
   else if(page==='orders'){renderMgrOrders();}
   else if(page==='customers'){renderMgrCustomers();}
-  else if(page==='pricing'){renderMgrPricing();}
+  else if(page==='pricing'){renderMgrPricing();updateExpressMultDisplay();}
   else if(page==='expenditure'){renderMgrExp();}
   else if(page==='reports'){renderMgrReports();}
   else if(page==='analytics'){try{initAnalyticsFilters();renderAnalytics();}catch(e){}}
@@ -5591,6 +5663,23 @@ function exportPLReport(){
   win.document.write('</head><body>'+area.innerHTML+'</body></html>');
   win.document.close();
   setTimeout(()=>win.print(),300);
+}
+
+
+function saveExpressMultiplier(){
+  const val=parseFloat(document.getElementById('expressMultInput')?.value)||1.75;
+  if(val<1||val>5){showNotif('Multiplier must be between 1 and 5.','err');return;}
+  DB.expressMultiplier=val;
+  saveSettings();
+  updateExpressMultDisplay();
+  showNotif('Express multiplier set to ×'+val.toFixed(2),'ok');
+}
+function updateExpressMultDisplay(){
+  const v=DB.expressMultiplier||1.75;
+  const inp=document.getElementById('expressMultInput');if(inp)inp.value=v;
+  const disp=document.getElementById('expressMultDisplay');if(disp)disp.textContent='×'+v.toFixed(2);
+  const ex=document.getElementById('expressMultExample');if(ex)ex.textContent='GH₵'+(100*v).toFixed(2);
+  const stat=document.getElementById('expressMultStatus');if(stat)stat.textContent='';
 }
 
 // ── INIT ──
