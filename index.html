@@ -101,7 +101,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 #adminApp{display:none;min-height:100vh;}
 #managerApp{display:none;}
 #managerApp.active{display:block !important;}
-#adminApp.active{display:flex !important;}
+#adminApp.active{display:block !important;}
 .a-sidebar{width:232px;min-height:100vh;background:var(--ink);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100;}
 .a-sb-brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.07);}
 .a-sb-brand .logo{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:2px;color:#e8f5ee;}
@@ -3866,11 +3866,11 @@ function submitShift(){
 // ══════════════════════════════════════════════════════
 function launchAdmin(){
   const aa=document.getElementById('adminApp');
-  if(aa){aa.classList.add('active');aa.style.display='flex';}
+  if(aa){aa.classList.add('active');aa.style.display='block';}
   document.getElementById('aUserName').textContent=CU.name;
   populateAdminBranchFilters();
-  renderDashboard();
-  renderPricingPanel();
+  try{renderDashboard();}catch(e){console.error('dashboard:',e);}
+  try{renderPricingPanel();}catch(e){}
   renderExpBody();
   renderStaff();
   renderRiders();
@@ -3943,7 +3943,7 @@ function showAPage(page,el){
     if(page==='float'){renderFloat();const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='turnaround'){const today=new Date().toISOString().split('T')[0];const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}if(to&&!to.value)to.value=today;renderTurnaround();}
     if(page==='complaints'){
-      renderAdminComplaints();
+      try{renderAdminComplaints();}catch(e){console.error('complaints:',e);}
       const cb=document.getElementById('adm-comp-branch');
       if(cb)cb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
     }
@@ -5403,6 +5403,8 @@ function adminSubmitOrder(){
   const spT=specialItems.reduce((s,i)=>s+i.subtotal,0);
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
   const trT=treatments.reduce((s,i)=>s+i.price,0);
+  const admIsExpress2=(document.getElementById('adm-orderType')?.value==='express');
+  const admExpMult2=admIsExpress2?(DB.expressMultiplier||1.75):1;
   const subtotal=parseFloat(((wT+spT+bdT+trT)*admExpMult2).toFixed(2));
   // Discounts
   const gdA=getActiveGlobalDiscount();
