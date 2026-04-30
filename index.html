@@ -3892,6 +3892,11 @@ function launchAdmin(){
   document.getElementById('expDate').value=today;
   document.getElementById('rptFrom').value=today;
   document.getElementById('rptTo').value=today;
+  // Activate dashboard page and first nav item
+  document.querySelectorAll('#adminApp .a-page').forEach(p=>p.classList.remove('active'));
+  const apDash=document.getElementById('ap-dashboard');if(apDash)apDash.classList.add('active');
+  const firstNav=document.querySelector('#adminApp .a-nav-item');
+  if(firstNav)firstNav.classList.add('active');
 }
 function populateAdminBranchFilters(){
   const opts=`<option value="all">All Branches</option>`+DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
@@ -3920,14 +3925,17 @@ function showAPage(page,el){
         ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
         if(ab.value&&CU)CU._loginBranch=ab.value;
       }
+      // Only clear form if navigating TO new order fresh (not returning to it)
+      // Always reset customer, keep form items if present
       clearAdminCust();
       activePromo=null;
       const pc=document.getElementById('promoCode');if(pc)pc.value='';
       const ps=document.getElementById('promoStatus');if(ps)ps.textContent='';
-      // Init the full order form immediately (like staff form)
-      setTimeout(()=>{
-        admInitOrderForm();
-      },50);
+      // Init form if not already populated
+      const wr=document.getElementById('adm-weightRows');
+      if(!wr||wr.children.length===0){
+        setTimeout(()=>admInitOrderForm(),50);
+      }
     }
     if(page==='debttracker')renderDebtTracker();
     if(page==='promos'){renderPromos();renderGlobalDiscountStatus();}
@@ -5499,7 +5507,15 @@ function showMgrPage(page, el){
     renderPLReport();
   } else if(page==='neworder'){
     const pg=document.getElementById('mgr-neworder');if(pg)pg.classList.add('active');
-    renderMgrNewOrder();
+    // Only rebuild if empty - preserve customer selection and form items
+    if(!pg||!pg.innerHTML.trim()) renderMgrNewOrder();
+    else {
+      // Refresh branch and rider selects only
+      const ab=document.getElementById('adminOrderBranch');
+      if(ab)ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+      const rs=document.getElementById('adm-riderSelect');
+      if(rs)rs.innerHTML='<option value="">— No rider —</option>'+DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+    }
   } else if(page==='staff'){
     const pg=document.getElementById('mgr-staff');if(pg)pg.classList.add('active');
     renderMgrStaff();
