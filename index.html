@@ -853,6 +853,14 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
     <!-- ORDERS BOARD -->
     <div class="s-page" id="sp-board">
+      <!-- BULK ACTION BAR -->
+      <div id="bulkActionBar" style="display:none;position:sticky;top:0;z-index:50;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;margin-bottom:10px;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span id="bulkCount" style="font-weight:700;"></span>
+        <button class="btn btn-xs" style="background:#2a7a4a;color:#fff;" onclick="bulkUpdateStatus('washing')">→ Washing</button>
+        <button class="btn btn-xs" style="background:#1a3a8a;color:#fff;" onclick="bulkUpdateStatus('ready')">→ Ready</button>
+        <button class="btn btn-xs" style="background:#5b21b6;color:#fff;" onclick="bulkUpdateStatus('delivery')">→ Delivery</button>
+        <button class="btn btn-xs btn-secondary" onclick="clearBulkSelect()">✕ Clear</button>
+      </div>
       <div class="card">
         <div class="board-bar">
           <input type="text" class="search-input" placeholder="🔍  Search orders..." id="boardSearch" oninput="renderBoard()">
@@ -1188,6 +1196,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-item" onclick="showAPage('branches',this)"><span class="ic">🏪</span> Branches</div>
       <div class="a-nav-item" onclick="showAPage('supplies',this)"><span class="ic">🧴</span> Supplies</div>
       <div class="a-nav-item" onclick="showAPage('staff',this)"><span class="ic">👥</span> Staff</div>
+      <div class="a-nav-item" onclick="showAPage('auditlog',this)"><span class="ic">🔍</span> Audit Log</div>
       <div class="a-nav-sep"></div>
       <div class="a-nav-item" onclick="showAPage('debttracker',this)"><span class="ic">💳</span> Debt Tracker</div>
       <div class="a-nav-item" onclick="showAPage('promos',this)"><span class="ic">🎟️</span> Promo Codes</div>
@@ -1212,6 +1221,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
       <!-- DASHBOARD -->
       <div class="a-page active" id="ap-dashboard">
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;"><button class="btn btn-secondary btn-sm" onclick="openDailySummary()">📊 Daily Summary</button><button class="btn btn-secondary btn-sm" onclick="exportOrdersCSV()">📥 Export CSV</button></div>
         <div id="supplyDashAlert" style="display:none;background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;"></div>
         <div class="stats-row">
           <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val green" id="d-rev">GH₵ 0</div><div class="stat-label">Today Revenue</div></div>
@@ -1884,6 +1894,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       </div>
 
       <!-- APPROVALS -->
+      <div class="a-page" id="ap-auditlog"></div>
       <div class="a-page" id="ap-approvals">
         <div class="card" style="margin-bottom:14px;">
           <div class="card-title">✅ Pending Approvals</div>
@@ -3285,6 +3296,7 @@ function submitOrder(){
     status:'pending',createdBy:CU.id,createdAt:new Date().toISOString(),
   };
   DB.orders.unshift(order);
+  auditLog('order-created','New order '+order.id+' for '+order.customerName+' GH₵'+order.total.toFixed(2),order.id);
   DB.nextOrderNum++;
   // Update customer stats
   const c=DB.customers.find(x=>x.id===selCust.id);
@@ -4039,7 +4051,8 @@ function renderAOrders(){
       <td><div class="tbl-actions">
         <button class="btn btn-xs btn-secondary" onclick="openStatusModal('${o.id}')">Status</button>
         <button class="btn btn-xs btn-primary" onclick="viewOrder('${o.id}')">View</button>
-        <button class="btn btn-xs btn-ghost" onclick="openEditModal('${o.id}')">Edit</button>
+        <button class="btn btn-xs btn-ghost" onclick="openEditModal('${o.id}')">✏️ Edit</button>
+        <button class="btn btn-xs btn-ghost" onclick="reprintReceipt('${o.id}')">🖨</button>
         <button class="btn btn-xs btn-danger" onclick="delOrder('${o.id}')">Del</button>
       </div></td>
     </tr>`;}).join('');
@@ -4138,29 +4151,15 @@ function renderCustomers(){
       +'<td><strong style="color:var(--accent);">GH&#x20B5;'+(c.totalSpent||0).toFixed(2)+'</strong></td>'
       +'<td style="font-size:.74rem;color:var(--muted);">'+fmtDateShort(c.createdAt)+'</td>'
       +'<td style="display:flex;gap:4px;flex-wrap:wrap;">'
-      +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist(\''+c.id+'\')">History</button>'
+      +'<button class="btn btn-xs btn-ghost" onclick="editCustomer(\''+c.id+'\')">✏️ Edit</button>'
+      +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist(\''+c.id+'\')">📋 History</button>'
       +delBtn
       +'</td>'
       +'</tr>';
   }).join('');
 }
 
-function adminViewCustHist(id){
-  const c=DB.customers.find(x=>x.id===id);if(!c)return;
-  const orders=DB.orders.filter(o=>o.customerId===id);
-  document.getElementById('custHistContent').innerHTML=`
-    <div style="margin-bottom:14px;"><strong>${c.name}</strong> · ${c.phone} · ${c.address||'—'}<br>
-    <span style="font-size:.8rem;color:var(--muted);">${orders.length} orders · GH₵${(c.totalSpent||0).toFixed(2)} total</span></div>
-    ${!orders.length?'<div class="empty"><div class="ei">📭</div><p>No orders yet.</p></div>':
-    orders.map(o=>`<div class="hist-item">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span class="h-id">${o.id}</span><div style="display:flex;gap:4px;">${statusBadge(o.status)}${payBadge(o.payStatus)}</div>
-      </div>
-      <div class="h-meta">${fmtDateShort(o.createdAt)} · ${branchName(o.branchId)} · GH₵${o.total.toFixed(2)}${o.balanceDue>0?' · Bal: GH₵'+o.balanceDue.toFixed(2):''}</div>
-      <div style="font-size:.74rem;color:var(--muted);margin-top:2px;">${orderSum(o)}</div>
-    </div>`).join('')}`;
-  openModal('custHistModal');
-}
+
 
 // ── PRICING ──
 function showPTab(t,el){
@@ -4511,12 +4510,22 @@ function renderStaff(){
   const branchOpts='<option value="all">All Branches</option>'+DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
   tbody.innerHTML=DB.users.map(u=>{
     const isAdmin=u.role==='admin';
+    const isCoAdmin=u.role==='coadmin';
+    const roleCell=isAdmin
+      ? '<td><span class="badge badge-washing">Admin</span></td>'
+      : '<td><select class="branch-changer" onchange="changeStaffRole(\''+u.id+'\',this.value)" title="Change role">'
+        +'<option value="Attendant"'+(( u.roleLabel==='Attendant'||(!u.roleLabel&&u.role==='staff'))?'selected':'')+'>Attendant</option>'
+        +'<option value="Supervisor"'+(u.roleLabel==='Supervisor'?'selected':'')+'>Supervisor</option>'
+        +'<option value="Manager"'+(u.role==='manager'?'selected':'')+'>Manager</option>'
+        +'<option value="Co-Admin"'+(u.role==='coadmin'?'selected':'')+'>Co-Admin</option>'
+        +'<option value="Rider"'+(u.roleLabel==='Rider'?'selected':'')+'>Rider</option>'
+        +'</select></td>';
     const branchCell=isAdmin
       ? '<td style="font-size:.78rem;color:var(--muted);">—</td>'
       : '<td><select class="branch-changer" onchange="changeStaffBranch(\''+u.id+'\',this.value)" title="Change branch">'+branchOpts+'</select></td>';
     return '<tr>'
       +'<td><strong>'+u.name+'</strong>'+(u.active===false?'<span style="font-size:.68rem;color:var(--accent2);margin-left:5px;">Inactive</span>':'')+'</td>'
-      +'<td><span class="badge badge-washing">'+(u.roleLabel||u.role)+'</span></td>'
+      +roleCell
       +branchCell
       +'<td monospace;letter-spacing:1px">'+u.pin+'</td>'
       +'<td><div class="tbl-actions">'
@@ -4531,6 +4540,22 @@ function renderStaff(){
     const sel=tbody.querySelector('select[onchange*="\''+u.id+'\',"]');
     if(sel)sel.value=u.branchId||'';
   });
+}
+function changeStaffRole(userId, newRoleLabel){
+  const u=DB.users.find(x=>x.id===userId);
+  if(!u){showNotif('User not found.','err');return;}
+  if(u.role==='admin'){showNotif('Cannot change Admin role.','err');return;}
+  const sysRole=newRoleLabel==='Manager'?'manager':newRoleLabel==='Co-Admin'?'coadmin':'staff';
+  u.role=sysRole;
+  u.roleLabel=newRoleLabel;
+  // Auto-assign branch based on role
+  if(newRoleLabel==='Manager'||newRoleLabel==='Co-Admin'||newRoleLabel==='Supervisor'){
+    u.branchId='all';
+  } else if(newRoleLabel==='Attendant'||newRoleLabel==='Rider'){
+    if(!u.branchId||u.branchId==='all') u.branchId=DB.branches.find(b=>b.active)?.id||'b1';
+  }
+  saveUsers();renderStaff();buildLogin();
+  showNotif(u.name+' → '+newRoleLabel+(u.branchId==='all'?' (All Branches)':' ('+branchName(u.branchId)+')'),'ok');
 }
 function changeStaffBranch(userId, newBranchId){
   const u=DB.users.find(x=>x.id===userId);
@@ -4974,28 +4999,7 @@ function renderStaffSupplies(){
 // ══════════════════════════════════════════════════════
 // GROUP E — CSV EXPORT
 // ══════════════════════════════════════════════════════
-function exportOrdersCSV(){
-  const rows=[['Order ID','Customer','Phone','Branch','Weight Items','Special Items','Bedding','Treatments','Total','Deposit','Balance','Payment','Status','Delivery','Rider','Date','Created By','Notes']];
-  const bf=document.getElementById('rptBranch')?.value||'all';
-  const from=document.getElementById('rptFrom')?.value;
-  const to=document.getElementById('rptTo')?.value;
-  DB.orders.filter(o=>(bf==='all'||o.branchId===bf)&&inDateRange(o.createdAt,'rptFrom','rptTo')).forEach(o=>{
-    rows.push([
-      o.id, o.customerName, o.customerPhone, branchName(o.branchId),
-      (o.weightItems||[]).map(i=>`${i.service} ${i.kg}kg`).join('; '),
-      (o.specialItems||[]).map(i=>`${i.name}x${i.qty}`).join('; '),
-      (o.beddingItems||[]).map(i=>`${i.name}x${i.qty}`).join('; '),
-      (o.treatments||[]).map(i=>i.name).join('; '),
-      o.total.toFixed(2), (o.depositPaid||0).toFixed(2), (o.balanceDue||0).toFixed(2),
-      o.payStatus, o.status, o.deliveryType,
-      DB.riders.find(r=>r.id===o.riderId)?.name||'',
-      new Date(o.createdAt).toLocaleDateString(),
-      DB.users.find(u=>u.id===o.createdBy)?.name||o.createdBy||'',
-      (o.notes||'').replace(/,/g,';')
-    ]);
-  });
-  downloadCSV(rows,'Nervol_Laundry_Orders.csv');
-}
+
 function exportExpCSV(){
   const rows=[['Date','Branch','Category','Description','Amount','Logged By']];
   DB.expenditures.forEach(e=>{
@@ -5076,6 +5080,20 @@ function selectAdminCust(id){
   const res=document.getElementById('adminCustResults');
   if(res)res.innerHTML='';
   liveCalc(); // recalc with loyalty
+  // Show customer notes if any
+  if(c.notes){
+    const el=document.getElementById('adminCustSelected');
+    if(el){
+      const noteEl=el.querySelector('.cust-note');
+      if(!noteEl){
+        const n=document.createElement('div');
+        n.className='cust-note';
+        n.style.cssText='font-size:.75rem;color:#b36b00;background:#fff3cd;border-radius:6px;padding:5px 10px;margin-top:6px;width:100%;';
+        n.textContent='📌 '+c.notes;
+        el.appendChild(n);
+      }
+    }
+  }
   showNotif('Customer: '+c.name,'ok');
 }
 function clearAdminCust(){
@@ -5365,6 +5383,7 @@ function adminSubmitOrder(){
     if(newName){adminQuickCreateCust();setTimeout(adminSubmitOrder,200);return;}
     showNotif('Select or create a customer first.','err');return;
   }
+  if(!checkDuplicateOrders(selCust.id,selCust.name))return;
   const branch=document.getElementById('adminOrderBranch')?.value;
   if(branch&&CU)CU._loginBranch=branch;
   const{weightItems,specialItems,beddingItems,treatments}=admCollectItems();
@@ -5595,7 +5614,7 @@ function renderMgrCustomers(){
       <button class="btn btn-primary" onclick="createCustomer()">✓ Create Customer</button>
     </div>
     <div class="card">
-      <div class="card-title">Customer List</div>
+      <div class="card-title">Customer List <button class="btn btn-xs btn-secondary" onclick="exportCustomersCSV()" style="margin-left:10px;">📥 Export CSV</button></div>
       <input type="text" class="search-input" id="custSearch2" placeholder="🔍 Search by name or phone..." oninput="renderCustomers()" style="margin-bottom:10px;width:100%;">
       <div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Orders</th><th>Total Spent</th><th>Since</th><th>Actions</th></tr></thead>
@@ -6027,6 +6046,267 @@ function notifyBulkCustomers(){
 
 
 
+
+
+// ══════════════════════════════════════════════════════
+// FEATURE 2: Edit Customer
+// ══════════════════════════════════════════════════════
+function editCustomer(id){
+  const c=DB.customers.find(x=>x.id===id);if(!c)return;
+  document.getElementById('editCustId').value=c.id;
+  document.getElementById('editCustName').value=c.name||'';
+  document.getElementById('editCustPhone').value=c.phone||'';
+  document.getElementById('editCustAddr').value=c.address||'';
+  document.getElementById('editCustNotes').value=c.notes||'';
+  openModal('editCustModal');
+}
+function saveCustomerEdit(){
+  const id=document.getElementById('editCustId').value;
+  const c=DB.customers.find(x=>x.id===id);if(!c)return;
+  const name=(document.getElementById('editCustName').value||'').trim();
+  const phone=(document.getElementById('editCustPhone').value||'').trim();
+  if(!name){showNotif('Name is required.','err');return;}
+  c.name=name;c.phone=phone;
+  c.address=(document.getElementById('editCustAddr').value||'').trim();
+  c.notes=(document.getElementById('editCustNotes').value||'').trim();
+  // Update name in existing orders
+  DB.orders.filter(o=>o.customerId===id).forEach(o=>{o.customerName=name;o.customerPhone=phone;});
+  saveCustomer(c);
+  closeModal('editCustModal');
+  renderCustomers();
+  showNotif('Customer updated ✅','ok');
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 4: Reprint Receipt
+// ══════════════════════════════════════════════════════
+function reprintReceipt(id){
+  const o=DB.orders.find(x=>x.id===id);
+  if(!o){showNotif('Order not found.','err');return;}
+  openPrintWin(o);
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 5: PIN reveal
+// ══════════════════════════════════════════════════════
+function revealPIN(userId){
+  const el=document.getElementById('pin-'+userId);
+  if(!el)return;
+  if(el.style.filter==='none'){
+    el.style.filter='blur(4px)';
+  } else {
+    el.style.filter='none';
+    // Auto re-blur after 5 seconds
+    setTimeout(()=>{if(el)el.style.filter='blur(4px)';},5000);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 6: Duplicate order warning
+// ══════════════════════════════════════════════════════
+function checkDuplicateOrders(customerId, customerName){
+  const open=DB.orders.filter(o=>o.customerId===customerId&&['pending','washing','ready','delivery'].includes(o.status));
+  if(open.length>0){
+    return confirm('⚠️ '+customerName+' already has '+open.length+' open order(s). Create another order anyway?');
+  }
+  return true;
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 8: Daily closing summary
+// ══════════════════════════════════════════════════════
+function openDailySummary(){
+  const today=new Date().toDateString();
+  const bFilter=document.getElementById('dashBranchFilter')?.value||'all';
+  const todayOrders=DB.orders.filter(o=>{
+    const d=new Date(o.createdAt).toDateString()===today;
+    return d&&(bFilter==='all'||o.branchId===bFilter);
+  });
+  const rev=todayOrders.reduce((s,o)=>s+o.total,0);
+  const collected=todayOrders.filter(o=>o.status==='collected').reduce((s,o)=>s+(o.payStatus==='paid'?o.total:o.depositPaid||0),0);
+  const outstanding=todayOrders.reduce((s,o)=>s+(o.balanceDue||0),0);
+  const exp=DB.expenditures.filter(e=>new Date(e.createdAt).toDateString()===today&&(bFilter==='all'||e.branchId===bFilter)).reduce((s,e)=>s+e.amount,0);
+  const petty=(DB.pettyCash||[]).filter(e=>new Date(e.createdAt).toDateString()===today&&(bFilter==='all'||e.branchId===bFilter)).reduce((s,e)=>s+e.amount,0);
+  const floatAmt=(DB.floats||[]).filter(f=>f.date===new Date().toISOString().split('T')[0]&&(bFilter==='all'||f.branchId===bFilter)).reduce((s,f)=>s+f.amount,0);
+  const netProfit=rev-exp-petty;
+  const byStatus={};
+  todayOrders.forEach(o=>{byStatus[o.status]=(byStatus[o.status]||0)+1;});
+  const summary=document.getElementById('dailySummaryContent');
+  if(!summary)return;
+  const d=new Date();
+  summary.innerHTML=`
+    <div style="text-align:center;padding:10px 0 16px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;">NERVOL LAUNDRY</div>
+      <div style="font-size:.75rem;color:var(--muted);">Daily Summary — ${d.toLocaleDateString('en-GH',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+    </div>
+    <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px;">
+      <div class="stat-card"><div class="stat-val green">GH₵${rev.toFixed(2)}</div><div class="stat-label">Total Revenue</div></div>
+      <div class="stat-card"><div class="stat-val blue">${todayOrders.length}</div><div class="stat-label">Total Orders</div></div>
+      <div class="stat-card"><div class="stat-val green">GH₵${collected.toFixed(2)}</div><div class="stat-label">Cash Collected</div></div>
+      <div class="stat-card"><div class="stat-val red">GH₵${outstanding.toFixed(2)}</div><div class="stat-label">Outstanding</div></div>
+      <div class="stat-card"><div class="stat-val red">GH₵${(exp+petty).toFixed(2)}</div><div class="stat-label">Total Expenses</div></div>
+      <div class="stat-card"><div class="stat-val ${netProfit>=0?'green':'red'}">GH₵${netProfit.toFixed(2)}</div><div class="stat-label">Net Profit</div></div>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title">Order Breakdown</div>
+      <table class="tbl"><tbody>
+        ${Object.entries(byStatus).map(([s,n])=>'<tr><td style="text-transform:capitalize;">'+s+'</td><td><strong>'+n+'</strong></td></tr>').join('')}
+        ${floatAmt?'<tr><td>Opening Float</td><td>GH₵'+floatAmt.toFixed(2)+'</td></tr>':''}
+      </tbody></table>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary btn-sm" onclick="printDailySummary()" style="flex:1;">🖨 Print Summary</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportDailySummaryCSV()">📥 CSV</button>
+    </div>`;
+  openModal('dailySummaryModal');
+}
+function printDailySummary(){
+  const area=document.getElementById('dailySummaryContent');if(!area)return;
+  const win=window.open('','_blank');
+  win.document.write('<html><head><title>Daily Summary</title><style>body{font-family:Arial,sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;}td,th{padding:6px 10px;border-bottom:1px solid #ddd;}.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}.stat-card{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center;}.stat-val{font-size:1.2rem;font-weight:700;}.green{color:#2a7a4a;}.red{color:#c94a1a;}.blue{color:#1a3a8a;}.card{border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:12px;}</style></head><body>');
+  win.document.write(area.innerHTML);
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(()=>win.print(),300);
+}
+function exportDailySummaryCSV(){
+  const today=new Date().toDateString();
+  const todayOrders=DB.orders.filter(o=>new Date(o.createdAt).toDateString()===today);
+  let csv='Order ID,Customer,Phone,Branch,Total,Payment,Status,Date\n';
+  csv+=todayOrders.map(o=>[o.id,o.customerName,o.customerPhone,branchName(o.branchId),o.total.toFixed(2),o.payStatus,o.status,fmtDate(o.createdAt)].join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='nervol_daily_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 9: Customer order history inline
+// ══════════════════════════════════════════════════════
+function adminViewCustHist(id){
+  const c=DB.customers.find(x=>x.id===id);if(!c)return;
+  const orders=DB.orders.filter(o=>o.customerId===id).slice(0,20);
+  const modal=document.getElementById('viewModal');
+  const mc=document.getElementById('viewModalContent');
+  if(!mc)return;
+  mc.innerHTML='<div style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;letter-spacing:2px;margin-bottom:6px;">'+c.name+'</div>'
+    +'<div style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">'+c.phone+(c.address?' · '+c.address:'')+(c.notes?'<br><em>'+c.notes+'</em>':'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">'
+    +'<div class="stat-card"><div class="stat-val blue">'+(c.totalOrders||0)+'</div><div class="stat-label">Orders</div></div>'
+    +'<div class="stat-card"><div class="stat-val green">GH₵'+(c.totalSpent||0).toFixed(2)+'</div><div class="stat-label">Total Spent</div></div>'
+    +'<div class="stat-card"><div class="stat-val gold">'+checkLoyalty(c)+'%</div><div class="stat-label">Loyalty Disc</div></div>'
+    +'</div>'
+    +(orders.length?'<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order ID</th><th>Date</th><th>Total</th><th>Status</th><th>Payment</th></tr></thead><tbody>'
+      +orders.map(o=>'<tr><td class="oid">'+o.id+'</td><td style="font-size:.74rem;">'+fmtDateShort(o.createdAt)+'</td><td>GH₵'+o.total.toFixed(2)+'</td><td>'+statusBadge(o.status)+'</td><td>'+payBadge(o.payStatus)+'</td></tr>').join('')
+      +'</tbody></table></div>'
+    :'<p style="color:var(--muted);text-align:center;padding:16px;">No orders yet.</p>');
+  openModal('viewModal');
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 10: CSV Export for Reports
+// ══════════════════════════════════════════════════════
+function exportOrdersCSV(){
+  const orders=DB.orders;
+  let csv='Order ID,Customer,Phone,Branch,Weight Total,Special Total,Bedding Total,Treatments,Subtotal,Discount,Total,Payment Status,Balance Due,Order Status,Order Type,Created At\n';
+  csv+=orders.map(o=>[
+    o.id,o.customerName,o.customerPhone||'',branchName(o.branchId),
+    (o.wTotal||0).toFixed(2),(o.spTotal||0).toFixed(2),(o.bdTotal||0).toFixed(2),(o.trTotal||0).toFixed(2),
+    (o.subtotal||o.total).toFixed(2),(o.discAmt||0).toFixed(2),o.total.toFixed(2),
+    o.payStatus,(o.balanceDue||0).toFixed(2),o.status,o.orderType||'standard',fmtDate(o.createdAt)
+  ].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='nervol_orders_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  showNotif('Orders exported to CSV ✅','ok');
+}
+function exportCustomersCSV(){
+  const custs=DB.customers;
+  let csv='Name,Phone,Address,Notes,Total Orders,Total Spent,Member Since\n';
+  csv+=custs.map(c=>[c.name,c.phone||'',c.address||'',c.notes||'',c.totalOrders||0,(c.totalSpent||0).toFixed(2),fmtDate(c.createdAt)].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='nervol_customers_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+  showNotif('Customers exported to CSV ✅','ok');
+}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 11: Bulk status update
+// ══════════════════════════════════════════════════════
+let bulkSelected=new Set();
+function toggleBulkSelect(orderId){
+  if(bulkSelected.has(orderId)) bulkSelected.delete(orderId);
+  else bulkSelected.add(orderId);
+  const cb=document.getElementById('bulk-'+orderId);
+  if(cb)cb.checked=bulkSelected.has(orderId);
+  document.getElementById('bulkActionBar').style.display=bulkSelected.size>0?'flex':'none';
+  document.getElementById('bulkCount').textContent=bulkSelected.size+' selected';
+}
+function bulkUpdateStatus(newStatus){
+  if(!bulkSelected.size){showNotif('No orders selected.','err');return;}
+  if(!confirm('Move '+bulkSelected.size+' orders to "'+newStatus+'"?'))return;
+  bulkSelected.forEach(id=>{
+    const o=DB.orders.find(x=>x.id===id);
+    if(o){o.status=newStatus;saveOrder(o);}
+  });
+  bulkSelected.clear();
+  document.getElementById('bulkActionBar').style.display='none';
+  renderBoard();renderAOrders();
+  showNotif('Updated '+bulkSelected.size+' orders to '+newStatus,'ok');
+}
+function clearBulkSelect(){bulkSelected.clear();renderBoard();}
+
+// ══════════════════════════════════════════════════════
+// FEATURE 14: Session timeout (30 min inactivity)
+// ══════════════════════════════════════════════════════
+let _sessionTimer=null;
+const SESSION_TIMEOUT=30*60*1000; // 30 minutes
+function resetSessionTimer(){
+  if(!CU)return;
+  clearTimeout(_sessionTimer);
+  _sessionTimer=setTimeout(()=>{
+    if(CU){
+      showNotif('Session expired due to inactivity. Please log in again.','err');
+      setTimeout(logout,2000);
+    }
+  },SESSION_TIMEOUT);
+}
+document.addEventListener('click',resetSessionTimer);
+document.addEventListener('keydown',resetSessionTimer);
+document.addEventListener('touchstart',resetSessionTimer);
+
+// ══════════════════════════════════════════════════════
+// FEATURE 15: Audit log
+// ══════════════════════════════════════════════════════
+function auditLog(action, detail, targetId){
+  if(!DB.auditLog) DB.auditLog=[];
+  DB.auditLog.unshift({
+    id:'al'+Date.now(),
+    action,detail,targetId,
+    by:CU?.name||'System',
+    role:CU?.roleLabel||CU?.role||'',
+    branchId:CU?._loginBranch||'',
+    at:new Date().toISOString()
+  });
+  // Keep last 500 entries
+  if(DB.auditLog.length>500) DB.auditLog=DB.auditLog.slice(0,500);
+  // Save to Firestore
+  if(typeof db!=='undefined'){
+    db.collection('settings').doc('auditLog').set({log:DB.auditLog.slice(0,200)}).catch(()=>{});
+  }
+}
+function renderAuditLog(){
+  const pg=document.getElementById('ap-auditlog');if(!pg)return;
+  const log=DB.auditLog||[];
+  if(!log.length){pg.innerHTML='<div class="card"><p style="color:var(--muted);padding:16px;">No audit log entries yet.</p></div>';return;}
+  pg.innerHTML='<div class="card"><div class="card-title">🔍 Audit Log</div>'
+    +'<div style="margin-bottom:10px;font-size:.8rem;color:var(--muted);">Last '+Math.min(log.length,200)+' actions recorded.</div>'
+    +'<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Time</th><th>By</th><th>Role</th><th>Action</th><th>Detail</th></tr></thead><tbody>'
+    +log.slice(0,200).map(e=>'<tr>'
+      +'<td style="font-size:.72rem;white-space:nowrap;">'+fmtDateShort(e.at)+'</td>'
+      +'<td>'+e.by+'</td>'
+      +'<td style="font-size:.72rem;">'+e.role+'</td>'
+      +'<td><span class="badge badge-washing" style="font-size:.68rem;">'+e.action+'</span></td>'
+      +'<td style="font-size:.78rem;">'+e.detail+'</td>'
+      +'</tr>').join('')
+    +'</tbody></table></div></div>';
+}
 
 // ── INIT ──
 (async () => {
@@ -6665,6 +6945,30 @@ document.addEventListener('click',e=>{
   <div class="abn-more-item" onclick="adminMobileNav('riders')"><span style="font-size:1.2rem">🏍️</span>Riders</div>
   <div class="abn-more-item" onclick="adminMobileNav('branches')"><span style="font-size:1.2rem">🏪</span>Branches</div>
   <div class="abn-more-item" onclick="adminMobileNav('staff')"><span style="font-size:1.2rem">👥</span>Staff</div>
+</div>
+
+<!-- EDIT CUSTOMER MODAL -->
+<div class="overlay" id="editCustModal" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;margin-bottom:16px;">✏️ Edit Customer</div>
+    <input type="hidden" id="editCustId">
+    <div class="fg"><label>Full Name</label><input type="text" id="editCustName" placeholder="Customer name"></div>
+    <div class="fg"><label>Phone</label><input type="tel" id="editCustPhone" placeholder="0244123456"></div>
+    <div class="fg"><label>Address</label><input type="text" id="editCustAddr" placeholder="e.g. Tarkwa New Site"></div>
+    <div class="fg"><label>Notes / Preferences</label><textarea id="editCustNotes" placeholder="e.g. Always use extra softener, allergic to bleach..."></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveCustomerEdit()" style="flex:1;">💾 Save Changes</button>
+      <button class="btn btn-secondary" onclick="closeModal('editCustModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAILY SUMMARY MODAL -->
+<div class="overlay" id="dailySummaryModal" style="display:none;">
+  <div class="modal" style="max-width:500px;max-height:85vh;overflow-y:auto;">
+    <div id="dailySummaryContent"></div>
+    <button class="btn btn-secondary" onclick="closeModal('dailySummaryModal')" style="width:100%;margin-top:12px;">Close</button>
+  </div>
 </div>
 </body>
 </html><div class="fg" id="loginBranchRow" style="display:none;">
