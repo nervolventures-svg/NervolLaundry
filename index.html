@@ -2609,12 +2609,9 @@ function buildLogin(){
 
   const ug=document.getElementById('userGrid');
   if(ug) ug.innerHTML=users.map(u=>{
-    const branch=loginMode!=='admin'&&u.branchId&&u.branchId!=='all'
-      ? '<span style="font-size:.65rem;color:#4a7a58;display:block;margin-top:2px;">'+branchName(u.branchId)+'</span>'
-      : '';
     const bid=u.id;
     return '<button class="user-btn" id="ub-'+bid+'" onclick="selUser(\'' +bid+ '\')">'
-      +u.name+branch+'</button>';
+      +u.name+'</button>';
   }).join('');
 
   pinBuf=''; selUID=null; drawDots();
@@ -2723,8 +2720,8 @@ function launchStaff(){
 }
 function showSTab(tab,el){
   try{
-  document.querySelectorAll('.s-page').forEach(p=>p.classList.remove('show'));
-  document.querySelectorAll('.s-nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#staffApp .s-page').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('#staffApp .s-nav-tab').forEach(t=>t.classList.remove('active'));
   const pg=document.getElementById('sp-'+tab);
   if(pg)pg.classList.add('show');
   if(el)el.classList.add('active');
@@ -3234,7 +3231,10 @@ function collectItems(){
 function submitOrder(){
   if(!selCust){showNotif('Select or create a customer first.','err');return;}
   const{weightItems,specialItems,beddingItems,treatments}=collectItems();
-  if(!weightItems.length&&!specialItems.length&&!beddingItems.length){showNotif('Add at least one item.','err');return;}
+  if(!weightItems.length&&!specialItems.length&&!beddingItems.length&&!treatments.length){
+    showNotif('Add at least one item to the order.','err');
+    return;
+  }
   const wT=weightItems.reduce((s,i)=>s+i.subtotal,0);
   const spT=specialItems.reduce((s,i)=>s+i.subtotal,0);
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
@@ -3903,8 +3903,8 @@ function populateAdminBranchFilters(){
 }
 function showAPage(page,el){
   try{
-    document.querySelectorAll('.a-page').forEach(p=>p.classList.remove('active'));
-    document.querySelectorAll('.a-nav-item').forEach(i=>i.classList.remove('active'));
+    document.querySelectorAll('#adminApp .a-page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('#adminApp .a-nav-item').forEach(i=>i.classList.remove('active'));
     const aPg=document.getElementById('ap-'+page);if(aPg)aPg.classList.add('active');
     if(el)el.classList.add('active');
     const titleEl=document.getElementById('aPageTitle');
@@ -5387,7 +5387,10 @@ function adminSubmitOrder(){
   const branch=document.getElementById('adminOrderBranch')?.value;
   if(branch&&CU)CU._loginBranch=branch;
   const{weightItems,specialItems,beddingItems,treatments}=admCollectItems();
-  if(!weightItems.length&&!specialItems.length&&!beddingItems.length){showNotif('Add at least one item.','err');return;}
+  if(!weightItems.length&&!specialItems.length&&!beddingItems.length&&!treatments.length){
+    showNotif('Add at least one item to the order.','err');
+    return;
+  }
   const wT=weightItems.reduce((s,i)=>s+i.subtotal,0);
   const spT=specialItems.reduce((s,i)=>s+i.subtotal,0);
   const bdT=beddingItems.reduce((s,i)=>s+i.subtotal,0);
@@ -6069,11 +6072,13 @@ function saveCustomerEdit(){
   c.name=name;c.phone=phone;
   c.address=(document.getElementById('editCustAddr').value||'').trim();
   c.notes=(document.getElementById('editCustNotes').value||'').trim();
-  // Update name in existing orders
+  // Update name on existing orders
   DB.orders.filter(o=>o.customerId===id).forEach(o=>{o.customerName=name;o.customerPhone=phone;});
   saveCustomer(c);
   closeModal('editCustModal');
-  renderCustomers();
+  // Re-render whichever customers view is active
+  if(CU?.role==='manager') renderMgrCustomers();
+  else renderCustomers();
   showNotif('Customer updated ✅','ok');
 }
 
@@ -6948,7 +6953,7 @@ document.addEventListener('click',e=>{
 </div>
 
 <!-- EDIT CUSTOMER MODAL -->
-<div class="overlay" id="editCustModal" style="display:none;">
+<div class="modal-ov" id="editCustModal" style="display:none;">
   <div class="modal" style="max-width:400px;">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;margin-bottom:16px;">✏️ Edit Customer</div>
     <input type="hidden" id="editCustId">
@@ -6964,7 +6969,7 @@ document.addEventListener('click',e=>{
 </div>
 
 <!-- DAILY SUMMARY MODAL -->
-<div class="overlay" id="dailySummaryModal" style="display:none;">
+<div class="modal-ov" id="dailySummaryModal" style="display:none;">
   <div class="modal" style="max-width:500px;max-height:85vh;overflow-y:auto;">
     <div id="dailySummaryContent"></div>
     <button class="btn btn-secondary" onclick="closeModal('dailySummaryModal')" style="width:100%;margin-top:12px;">Close</button>
