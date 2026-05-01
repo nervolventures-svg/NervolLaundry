@@ -2589,7 +2589,7 @@ const DEF = {
     {id:'u0m',name:'Manager',pin:'9999',role:'manager',branchId:'b1'},
     {id:'u1',name:'Ama',pin:'1111',role:'staff',roleLabel:'Attendant',branchId:'b1'},
     {id:'u2',name:'Kofi',pin:'2222',role:'staff',roleLabel:'Attendant',branchId:'b2'},
-    {id:'u3',name:'Akua',pin:'3333',role:'staff',roleLabel:'Supervisor',branchId:'b3'},
+    {id:'u3',name:'Akua',pin:'3333',role:'supervisor',roleLabel:'Supervisor',branchId:'all'},
   ],
   customers:[],
   orders:[],
@@ -3071,9 +3071,10 @@ function buildLogin(){
   // Admin side: admin, co-admin, manager, supervisor
   // Staff side: attendant, rider
   const adminRoles=['admin','coadmin','manager','supervisor'];
+  const isAdminSide = u => adminRoles.includes(u.role) || u.roleLabel==='Supervisor';
   const users = loginMode==='admin'
-    ? DB.users.filter(u=>adminRoles.includes(u.role)&&u.active!==false)
-    : DB.users.filter(u=>!adminRoles.includes(u.role)&&u.active!==false);
+    ? DB.users.filter(u=>isAdminSide(u)&&u.active!==false)
+    : DB.users.filter(u=>!isAdminSide(u)&&u.active!==false);
 
   const ug=document.getElementById('userGrid');
   if(ug) ug.innerHTML=users.map(u=>{
@@ -3134,7 +3135,7 @@ function doLogin(){
   attachRealtimeListeners();
   if(u.role==='admin'||u.role==='coadmin') launchAdmin();
   else if(u.role==='manager') launchManager();
-  else if(u.role==='supervisor') launchSupervisor();
+  else if(u.role==='supervisor'||(u.role==='staff'&&u.roleLabel==='Supervisor')) launchSupervisor();
   else launchStaff();
 }
 function toggleMode(){
@@ -4085,6 +4086,11 @@ function renderBoard(){
     return m&&f&&d;
   });
   const tbody=document.getElementById('boardBody');if(!tbody)return;
+  const _ordersGetters = {
+    id:o=>o.id, customer:o=>o.customerName, branch:o=>branchName(o.branchId),
+    total:o=>o.total, payment:o=>o.payStatus, balance:o=>o.balanceDue||0,
+    status:o=>o.status, date:o=>o.createdAt
+  };
   orders = sortData(orders,'aOrderBody',_ordersGetters);
   setTimeout(()=>applySortHeaders('aOrderBody'),50);
   if(!orders.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty"><div class="ei">🧺</div><p>No orders found.</p></div></td></tr>';return;}
