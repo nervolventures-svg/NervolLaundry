@@ -30,6 +30,93 @@
   <button onclick="check()">🔍 Check Status</button>
   <div id="result"></div>
 </div>
+
+<!-- CUSTOMER COMPLAINT FORM -->
+<div class="card" style="margin-top:16px;">
+  <h1 style="font-size:1rem;margin-bottom:4px;">⚠️ Lodge a Complaint</h1>
+  <p>Have an issue with your order? Let us know below.</p>
+  <div id="compFormArea">
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">ORDER ID (if known)</label>
+      <input type="text" id="cc-order" placeholder="NL-2026-..." style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">YOUR NAME *</label>
+      <input type="text" id="cc-name" placeholder="Your name" style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">TYPE</label>
+      <select id="cc-type" style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;">
+        <option value="quality">Quality Issue</option>
+        <option value="damage">Item Damaged</option>
+        <option value="missing">Item Missing</option>
+        <option value="delay">Delay</option>
+        <option value="staff">Staff Conduct</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">DESCRIPTION *</label>
+      <textarea id="cc-desc" placeholder="Describe your issue..." rows="3" style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;resize:vertical;"></textarea>
+    </div>
+    <button onclick="submitCustomerComplaint()" style="width:100%;padding:13px;background:#c94a1a;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;">⚠️ Submit Complaint</button>
+  </div>
+  <div id="compSuccess" style="display:none;text-align:center;padding:16px;">
+    <div style="font-size:2rem;margin-bottom:8px;">✅</div>
+    <div style="font-weight:700;color:#4adc7a;">Complaint Received</div>
+    <div style="font-size:.8rem;color:#4a7a58;margin-top:4px;">Thank you. Our team will review your complaint and get back to you.</div>
+    <button onclick="document.getElementById('compSuccess').style.display='none';document.getElementById('compFormArea').style.display='block';" style="margin-top:12px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;">Submit Another</button>
+  </div>
+</div>
+
+<script>
+async function submitCustomerComplaint(){
+  const name=(document.getElementById('cc-name')?.value||'').trim();
+  const desc=(document.getElementById('cc-desc')?.value||'').trim();
+  if(!name){alert('Please enter your name.');return;}
+  if(!desc){alert('Please describe your issue.');return;}
+  const complaint={
+    id:'comp'+Date.now(),
+    orderId:(document.getElementById('cc-order')?.value||'').trim(),
+    customerName:name,
+    type:document.getElementById('cc-type')?.value||'other',
+    description:desc,
+    branchId:'',
+    loggedBy:'Customer (self-service)',
+    status:'open',
+    source:'customer-portal',
+    createdAt:new Date().toISOString()
+  };
+  try{
+    const r=await fetch('https://firestore.googleapis.com/v1/projects/nervollaundry-8978e/databases/(default)/documents/complaints/'+complaint.id,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({fields:{
+        id:{stringValue:complaint.id},
+        orderId:{stringValue:complaint.orderId},
+        customerName:{stringValue:complaint.customerName},
+        type:{stringValue:complaint.type},
+        description:{stringValue:complaint.description},
+        branchId:{stringValue:complaint.branchId},
+        loggedBy:{stringValue:complaint.loggedBy},
+        status:{stringValue:complaint.status},
+        source:{stringValue:complaint.source},
+        createdAt:{stringValue:complaint.createdAt}
+      }})
+    });
+    if(r.ok){
+      document.getElementById('compFormArea').style.display='none';
+      document.getElementById('compSuccess').style.display='block';
+      ['cc-order','cc-name','cc-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    } else {
+      alert('Submission failed. Please try again or call us directly.');
+    }
+  } catch(err){
+    alert('No internet connection. Please try again when connected.');
+  }
+}
+</script>
+
 <script>
 async function check(){
   const q=document.getElementById('q').value.trim().toUpperCase();

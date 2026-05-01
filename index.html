@@ -644,12 +644,23 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   }
 }
 .print-watermark { display: none; }
+
+/* ── SORTABLE TABLES ── */
+.tbl th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+.tbl th.sortable:hover{background:var(--surface3);color:var(--accent);}
+.tbl th.sortable::after{content:' ⇅';font-size:.65rem;opacity:.4;margin-left:2px;}
+.tbl th.sort-asc::after{content:' ▲';opacity:1;color:var(--accent);}
+.tbl th.sort-desc::after{content:' ▼';opacity:1;color:var(--accent);}
 </style>
 <!-- Firebase Compat SDK — loaded in head, always available -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+
+<!-- OFFLINE BANNER -->
+<div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#c94a1a;color:#fff;padding:8px 16px;font-size:.82rem;text-align:center;"></div>
+
 <div id="syncBar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99998;background:var(--accent);color:#fff;text-align:center;padding:6px;font-size:.78rem;font-weight:600;">🔄 Syncing...</div>
 <div id="offlineBanner" style="display:none;background:#d97706;color:#fff;text-align:center;padding:7px;font-size:.8rem;font-weight:600;position:fixed;top:0;left:0;right:0;z-index:99999;">
   📴 Offline Mode — using local data. Open on <strong>nervollaundry.vercel.app</strong> for full sync.
@@ -1140,6 +1151,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-sep"></div>
       <div class="a-nav-item" onclick="showMgrPage('supplies',this)"><span class="ic">🧴</span> Supplies</div>
       <div class="a-nav-item" onclick="showMgrPage('staff',this)"><span class="ic">👥</span> Staff</div>
+      <button class="btn btn-ghost btn-sm" onclick="openChangePIN()" style="width:100%;margin-bottom:6px;font-size:.76rem;color:#4a7a58;">🔑 Change My PIN</button>
       <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
     <!-- BODY -->
@@ -1251,7 +1263,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-item" onclick="showAPage('ridertrips',this)"><span class="ic">🛵</span> Rider Trips</div>
       <div class="a-nav-item" onclick="showAPage('approvals',this)"><span class="ic">✅</span> Approvals <span class="n-badge" id="approvalsBadge" style="display:none">0</span></div>
     </nav>
-    <div class="a-sb-foot"><button class="a-sb-logout" onclick="logout()">🚪 Logout</button></div>
+    <div class="a-sb-foot">
+  <button class="btn btn-ghost btn-sm" onclick="openChangePIN()" style="width:100%;margin-bottom:6px;font-size:.76rem;color:var(--muted);">🔑 Change My PIN</button>
+  <button class="a-sb-logout" onclick="logout()">🚪 Logout</button>
+</div>
   </div>
   <div class="a-main">
     <div class="a-topbar">
@@ -1489,7 +1504,15 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
           <div class="board-bar">
             <input type="text" class="search-input" placeholder="🔍  Search customers..." id="custSearch2" oninput="renderCustomers()">
           </div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Total Orders</th><th>Total Spent</th><th>Since</th><th>Actions</th></tr></thead><tbody id="custTableBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr>
+  <th class="sortable" data-col="name" onclick="sortBy('custTableBody','name',renderCustomers)">Name</th>
+  <th class="sortable" data-col="phone" onclick="sortBy('custTableBody','phone',renderCustomers)">Phone</th>
+  <th>Address</th>
+  <th class="sortable" data-col="orders" onclick="sortBy('custTableBody','orders',renderCustomers)">Orders</th>
+  <th class="sortable" data-col="spent" onclick="sortBy('custTableBody','spent',renderCustomers)">Total Spent</th>
+  <th class="sortable" data-col="since" onclick="sortBy('custTableBody','since',renderCustomers)">Since</th>
+  <th>Actions</th>
+</tr></thead><tbody id="custTableBody"></tbody></table></div>
         </div>
       </div>
 
@@ -1750,7 +1773,14 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         </div>
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Rider Performance</div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Phone</th><th>Deliveries</th><th>Completed</th><th>Rate</th><th>Actions</th></tr></thead><tbody id="riderBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr>
+  <th class="sortable" data-col="name" onclick="sortBy('riderBody','name',renderRiders)">Name</th>
+  <th>Phone</th>
+  <th class="sortable" data-col="deliveries" onclick="sortBy('riderBody','deliveries',renderRiders)">Deliveries</th>
+  <th class="sortable" data-col="completed" onclick="sortBy('riderBody','completed',renderRiders)">Completed</th>
+  <th class="sortable" data-col="rate" onclick="sortBy('riderBody','rate',renderRiders)">Rate</th>
+  <th>Actions</th>
+</tr></thead><tbody id="riderBody"></tbody></table></div>
         </div>
       </div>
 
@@ -1784,7 +1814,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         </div>
         <div class="card">
           <div class="card-title">Staff List</div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>PIN</th><th>Actions</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr>
+  <th class="sortable" data-col="name" onclick="sortBy('staffBody','name',renderStaff)">Name</th>
+  <th class="sortable" data-col="role" onclick="sortBy('staffBody','role',renderStaff)">Role</th>
+  <th class="sortable" data-col="branch" onclick="sortBy('staffBody','branch',renderStaff)">Branch</th>
+  <th>PIN</th>
+  <th>Actions</th>
+</tr></thead><tbody id="staffBody"></tbody></table></div>
         </div>
       </div>
 
@@ -1988,7 +2024,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 <!-- PIN CHANGE MODAL -->
 <div class="modal-ov" id="pinChangeModal" style="display:none">
   <div class="modal" style="max-width:380px;">
-    <div class="modal-title">🔑 Change PIN</div>
+    <div class="modal-title" id="pinChangeTitle">🔑 Change PIN</div>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;" id="pinChangeSubtitle">Enter your current PIN and choose a new 4-digit PIN.</p>
     <div class="fg" style="margin-bottom:10px;" id="currentPinWrap">
       <label>Current PIN</label>
@@ -2805,7 +2841,7 @@ function staffCreateCustomer(){
 
 function renderStaffCustomers(){
   const q=(document.getElementById('sCustSearch')?.value||'').toLowerCase();
-  const custs=DB.customers.filter(c=>
+  let custs=DB.customers.filter(c=>
     c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)
   );
   const tbody=document.getElementById('sCustTableBody');
@@ -2815,6 +2851,8 @@ function renderStaffCustomers(){
     return;
   }
   const isSup=CU?.roleLabel==='Supervisor';
+  custs=sortData(custs,'custTableBody',_custGetters);
+  setTimeout(()=>applySortHeaders('custTableBody'),50);
   tbody.innerHTML=custs.map(c=>{
     const safeName=c.name.replace(/['"]/g,'');
     const delBtn=isSup
@@ -2898,14 +2936,17 @@ function renderSExpBody(){
   const tbody=document.getElementById('sExpBody');
   if(!tbody)return;
   // Show this branch's expenses, most recent 30
-  const exps=DB.expenditures
+  const _expGetters={date:e=>e.createdAt,branch:e=>branchName(e.branchId),cat:e=>e.cat,amount:e=>e.amount,by:e=>e.loggedBy||''};
+  let exps=DB.expenditures
     .filter(e=>e.branchId===CU._loginBranch)
     .slice(0,30);
   if(!exps.length){
     tbody.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei">💸</div><p>No expenses logged yet for this branch.</p></div></td></tr>`;
     return;
   }
-  tbody.innerHTML=exps.map(e=>`
+  const sortedExps=sortData(exps,'expBody',_expGetters);
+  setTimeout(()=>applySortHeaders('expBody'),50);
+  tbody.innerHTML=sortedExps.map(e=>`
     <tr>
       <td style="font-size:.76rem;">${e.date}</td>
       <td><span class="badge badge-pending" style="font-size:.68rem;">${e.cat}</span></td>
@@ -3206,7 +3247,7 @@ function updateTicketPreview(wT,spT,bdT,trT,grand,deposit,balance,payStatus,disc
   const phone=selCust?.phone||'—';
   const num=String(DB.nextOrderNum).padStart(4,'0');
   const grandAfterDisc=grand-discAmt;
-  document.getElementById('tp-id').textContent=`NL-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
+  document.getElementById('tp-id').textContent=generateOrderId();
   document.getElementById('tp-date').textContent=new Date().toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'});
   document.getElementById('tp-cust').textContent=custName;
   document.getElementById('tp-phone').textContent=phone;
@@ -3326,7 +3367,7 @@ function submitOrder(){
   const deposit=payStatus==='partial'?parseFloat(document.getElementById('depositAmt').value)||0:payStatus==='paid'?total:0;
   const riderId=document.getElementById('riderSelect').value;
   const order={
-    id:`NL-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`,
+    id:generateOrderId(),
     customerId:selCust.id,customerName:selCust.name,customerPhone:selCust.phone,
     branchId:CU._loginBranch,
     deliveryType:document.getElementById('deliveryType').value,
@@ -3635,6 +3676,8 @@ function renderBoard(){
     return m&&f&&d;
   });
   const tbody=document.getElementById('boardBody');if(!tbody)return;
+  orders = sortData(orders,'aOrderBody',_ordersGetters);
+  setTimeout(()=>applySortHeaders('aOrderBody'),50);
   if(!orders.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty"><div class="ei">🧺</div><p>No orders found.</p></div></td></tr>';return;}
   tbody.innerHTML=orders.map(o=>{
     const od=isOverdue(o);
@@ -4491,7 +4534,10 @@ function printReport(){window.print();}
 // ── RIDERS ──
 function renderRiders(){
   const tbody=document.getElementById('riderBody');if(!tbody)return;
-  tbody.innerHTML=DB.riders.map(r=>{
+  const _riderGetters={name:r=>r.name,deliveries:r=>DB.riderTrips?.filter(t=>t.riderId===r.id).length||0,completed:r=>DB.riderTrips?.filter(t=>t.riderId===r.id&&t.status==='completed').length||0,rate:r=>r.rate||0};
+  const sortedRiders=sortData(DB.riders,'riderBody',_riderGetters);
+  setTimeout(()=>applySortHeaders('riderBody'),50);
+  tbody.innerHTML=sortedRiders.map(r=>{
     const deliveries=DB.orders.filter(o=>o.riderId===r.id);
     const completed=deliveries.filter(o=>o.status==='collected').length;
     return`<tr>
@@ -4515,7 +4561,10 @@ function delRider(id){if(!confirm('Remove this rider?'))return;DB.riders=DB.ride
 // ── BRANCHES ──
 function renderBranches(){
   const tbody=document.getElementById('branchBody');if(!tbody)return;
-  tbody.innerHTML=DB.branches.map(b=>{
+  const _branchGetters={name:b=>b.name,status:b=>b.active?'active':'inactive',orders:b=>DB.orders.filter(o=>o.branchId===b.id).length,created:b=>b.createdAt};
+  const sortedBranches=sortData(DB.branches,'branchBody',_branchGetters);
+  setTimeout(()=>applySortHeaders('branchBody'),50);
+  tbody.innerHTML=sortedBranches.map(b=>{
     const oc=DB.orders.filter(o=>o.branchId===b.id).length;
     return`<tr>
       <td><strong>${b.name}</strong></td>
@@ -4560,8 +4609,11 @@ function toggleBranch(id){
 // ── STAFF ──
 function renderStaff(){
   const tbody=document.getElementById('staffBody');if(!tbody)return;
+  const _staffGetters={name:u=>u.name,role:u=>u.roleLabel||u.role,branch:u=>branchName(u.branchId)};
   const branchOpts='<option value="all">All Branches</option>'+DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-  tbody.innerHTML=DB.users.map(u=>{
+  const sortedUsers=sortData(DB.users,'staffBody',_staffGetters);
+  setTimeout(()=>applySortHeaders('staffBody'),50);
+  tbody.innerHTML=sortedUsers.map(u=>{
     const isAdmin=u.role==='admin';
     const isCoAdmin=u.role==='coadmin';
     const roleCell=isAdmin
@@ -4580,7 +4632,10 @@ function renderStaff(){
       +'<td><strong>'+u.name+'</strong>'+(u.active===false?'<span style="font-size:.68rem;color:var(--accent2);margin-left:5px;">Inactive</span>':'')+'</td>'
       +roleCell
       +branchCell
-      +'<td monospace;letter-spacing:1px">'+u.pin+'</td>'
+      +'<td style="font-family:monospace;letter-spacing:1px;">'
+      +'<span id="pin-'+u.id+'" style="filter:blur(4px);cursor:pointer;user-select:none;" title="Click to reveal" onclick="revealPIN(\''+u.id+'\')">' + u.pin + '</span>'
+      +' <button class="btn btn-xs btn-ghost" style="font-size:.65rem;padding:2px 6px;vertical-align:middle;" onclick="revealPIN(\''+u.id+'\')">👁</button>'
+      +'</td>'
       +'<td><div class="tbl-actions">'
       +'<button class="btn btn-xs btn-ghost" onclick="openChangePIN(\''+u.id+'\')">🔑 PIN</button>'
       +(isAdmin?'':'<button class="btn btn-xs btn-secondary" onclick="toggleStaffActive(\''+u.id+'\')">'+( u.active===false?'Activate':'Deactivate')+'</button>')
@@ -4684,13 +4739,14 @@ function openChangePIN(staffId=null){
   pinChangeTargetId=staffId;
   const isAdminReset=!!staffId;
   const target=staffId?DB.users.find(u=>u.id===staffId):CU;
-  document.getElementById('pinChangeSubtitle').textContent=
-    isAdminReset?`Reset PIN for ${target?.name}.`:'Enter your current PIN and choose a new 4-digit PIN.';
-  document.getElementById('currentPinWrap').style.display=isAdminReset?'none':'block';
-  document.getElementById('currentPin').value='';
-  document.getElementById('newPin').value='';
-  document.getElementById('confirmPin').value='';
-  document.getElementById('pinChangeErr').textContent='';
+  const subtitle=document.getElementById('pinChangeSubtitle');
+  if(subtitle)subtitle.textContent=isAdminReset?'Reset PIN for '+target?.name+'. No current PIN needed.':'Enter your current PIN, then choose a new 4-digit PIN.';
+  const cwrap=document.getElementById('currentPinWrap');
+  if(cwrap)cwrap.style.display=isAdminReset?'none':'block';
+  const title=document.getElementById('pinChangeTitle');
+  if(title)title.textContent=isAdminReset?'🔑 Reset PIN — '+target?.name:'🔑 Change My PIN';
+  ['currentPin','newPin','confirmPin'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const err=document.getElementById('pinChangeErr');if(err)err.textContent='';
   openModal('pinChangeModal');
 }
 function submitPINChange(){
@@ -5465,7 +5521,7 @@ function adminSubmitOrder(){
   const dep=ps==='partial'?parseFloat(document.getElementById('adm-depositAmt')?.value)||0:ps==='paid'?total:0;
   const riderId=document.getElementById('adm-riderSelect')?.value||'';
   const order={
-    id:'NL-'+new Date().getFullYear()+'-'+Date.now().toString(36).toUpperCase(),
+    id:generateOrderId(),
     customerId:selCust.id,customerName:selCust.name,customerPhone:selCust.phone,
     branchId:CU._loginBranch,
     deliveryType:document.getElementById('adm-deliveryType')?.value||'pickup',
@@ -5481,7 +5537,15 @@ function adminSubmitOrder(){
   const c=DB.customers.find(x=>x.id===selCust.id);
   if(c){c.totalOrders=(c.totalOrders||0)+1;c.totalSpent=(c.totalSpent||0)+total;}
   if(activePromo&&!gdA){const p=DB.promos.find(x=>x.id===activePromo.id);if(p)p.usedCount=(p.usedCount||0)+1;activePromo=null;}
-  saveOrder(order);if(c)saveCustomer(c);saveSettings();
+  // Save with offline fallback
+  if(!navigator.onLine){
+    if(!DB.orders.find(o=>o.id===order.id)) DB.orders.unshift(order);
+    addToOfflineQueue(order);
+    if(c){c.totalOrders=(c.totalOrders||0)+1;c.totalSpent=(c.totalSpent||0)+order.total;saveCustomer(c);}
+    saveSettings();
+  } else {
+    saveOrder(order);if(c)saveCustomer(c);saveSettings();
+  }
   lastCreatedOrder=order;
   document.getElementById('sc-orderId').textContent=order.id;
   document.getElementById('sc-custName').textContent=order.customerName+' · '+order.customerPhone;
@@ -5790,7 +5854,16 @@ function renderMgrComplaints(){
           <div class="ftab" onclick="setCompFilter(\'resolved\',this)">Resolved</div>
         </div>
       </div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Order</th><th>Customer</th><th>Type</th><th>Issue</th><th>Branch</th><th>Status</th><th>Action</th></tr></thead><tbody id="aCompBody"></tbody></table></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr>
+  <th class="sortable" data-col="date" onclick="sortBy('aCompBody','date',renderAdminComplaints)">Date</th>
+  <th>Order</th>
+  <th class="sortable" data-col="customer" onclick="sortBy('aCompBody','customer',renderAdminComplaints)">Customer</th>
+  <th class="sortable" data-col="type" onclick="sortBy('aCompBody','type',renderAdminComplaints)">Type</th>
+  <th>Issue</th>
+  <th class="sortable" data-col="branch" onclick="sortBy('aCompBody','branch',renderAdminComplaints)">Branch</th>
+  <th class="sortable" data-col="status" onclick="sortBy('aCompBody','status',renderAdminComplaints)">Status</th>
+  <th>Action</th>
+</tr></thead><tbody id="aCompBody"></tbody></table></div>
     </div>`;
   // Populate branch filter
   const cb=document.getElementById('mgr-comp-branch');
@@ -6161,12 +6234,14 @@ function reprintReceipt(id){
 function revealPIN(userId){
   const el=document.getElementById('pin-'+userId);
   if(!el)return;
-  if(el.style.filter==='none'){
+  const isRevealed = el.style.filter==='none'||el.style.filter==='';
+  if(isRevealed){
     el.style.filter='blur(4px)';
   } else {
     el.style.filter='none';
-    // Auto re-blur after 5 seconds
-    setTimeout(()=>{if(el)el.style.filter='blur(4px)';},5000);
+    // Auto re-blur after 8 seconds
+    setTimeout(()=>{if(el)el.style.filter='blur(4px)';},8000);
+    showNotif('PIN revealed — will auto-hide in 8s','ok');
   }
 }
 
@@ -6414,6 +6489,209 @@ function installPWA(){
 function dismissInstall(){
   const banner=document.getElementById('installBanner');
   if(banner)banner.style.display='none';
+}
+
+
+// ══════════════════════════════════════════════════════
+// UNIVERSAL TABLE SORT ENGINE
+// ══════════════════════════════════════════════════════
+const _sortState = {};  // { tableId: { col, dir } }
+
+function sortBy(tableId, col, renderFn) {
+  const s = _sortState[tableId] || {col:null, dir:'asc'};
+  if (s.col === col) {
+    s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    s.col = col;
+    s.dir = 'asc';
+  }
+  _sortState[tableId] = s;
+  renderFn();
+}
+
+function applySortHeaders(tableId) {
+  const s = _sortState[tableId];
+  if (!s) return;
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  table.querySelectorAll('th.sortable').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col === s.col) {
+      th.classList.add(s.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
+}
+
+function sortData(arr, tableId, getters) {
+  const s = _sortState[tableId];
+  if (!s || !s.col || !getters[s.col]) return arr;
+  const fn = getters[s.col];
+  const dir = s.dir === 'asc' ? 1 : -1;
+  return [...arr].sort((a,b) => {
+    const va = fn(a), vb = fn(b);
+    if (va === null || va === undefined) return dir;
+    if (vb === null || vb === undefined) return -dir;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va).localeCompare(String(vb)) * dir;
+  });
+}
+
+
+// ══════════════════════════════════════════════════════
+// SMART ORDER ID — conflict-proof, self-documenting
+// Format: NL-YYYY-[BRANCH]-[USER]-[TIME]
+// Example: NL-2026-WS-AMA-M04C8T
+// ══════════════════════════════════════════════════════
+function generateOrderId(){
+  const yr = new Date().getFullYear();
+  
+  // Branch code: first 2 significant letters of branch name
+  const branch = CU?._loginBranch||'';
+  const branchName_ = DB.branches.find(b=>b.id===branch)?.name||'XX';
+  // Extract consonants/significant letters, max 2-3 chars
+  const branchCode = branchName_
+    .toUpperCase()
+    .replace(/[AEIOU \-_.]/g,'')  // remove vowels and spaces
+    .slice(0,3) || 
+    branchName_.toUpperCase().replace(/\s/g,'').slice(0,3);  // fallback with vowels
+  
+  // User code: first 3 letters of user's name
+  const userName = CU?.name||'SYS';
+  const userCode = userName.toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X');
+  
+  // Time: base-36 of milliseconds — compact but ordered
+  const timeCode = Date.now().toString(36).toUpperCase().slice(-6);
+  
+  return 'NL-'+yr+'-'+branchCode+'-'+userCode+'-'+timeCode;
+}
+
+
+// ══════════════════════════════════════════════════════
+// OFFLINE MODE — Queue orders when no internet
+// ══════════════════════════════════════════════════════
+const OFFLINE_QUEUE_KEY = 'nervol_offline_queue';
+
+function getOfflineQueue(){
+  try{ return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+function saveOfflineQueue(q){
+  try{ localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); }
+  catch(e){ console.warn('Offline queue save failed:', e); }
+}
+function addToOfflineQueue(order){
+  const q = getOfflineQueue();
+  q.push({...order, _queuedAt: new Date().toISOString(), _synced: false});
+  saveOfflineQueue(q);
+  updateOfflineBanner();
+  console.log('[OFFLINE] Order queued:', order.id);
+}
+function getQueueCount(){
+  return getOfflineQueue().filter(o=>!o._synced).length;
+}
+
+// Sync queued orders to Firestore
+async function syncOfflineQueue(){
+  if(!navigator.onLine) return;
+  const q = getOfflineQueue();
+  const pending = q.filter(o=>!o._synced);
+  if(!pending.length) return;
+  
+  let synced = 0, failed = 0;
+  for(const order of pending){
+    try{
+      // Add to DB.orders if not already there
+      if(!DB.orders.find(o=>o.id===order.id)){
+        DB.orders.unshift(order);
+      }
+      await saveOrderAsync(order);
+      // Mark as synced
+      const idx = q.findIndex(o=>o.id===order.id);
+      if(idx>=0) q[idx]._synced = true;
+      synced++;
+    } catch(err){
+      console.warn('[OFFLINE] Sync failed for', order.id, err);
+      failed++;
+    }
+  }
+  saveOfflineQueue(q.filter(o=>!o._synced)); // keep only unsynced
+  
+  if(synced>0){
+    showNotif(synced+' offline order'+(synced>1?'s':'')+' synced ✅','ok');
+    if(typeof renderAOrders==='function') try{renderAOrders();}catch(e){}
+    if(typeof renderDashboard==='function') try{renderDashboard();}catch(e){}
+    if(typeof renderMgrDashboard==='function') try{renderMgrDashboard();}catch(e){}
+  }
+  if(failed>0) showNotif(failed+' order(s) failed to sync. Will retry.','err');
+  updateOfflineBanner();
+}
+
+async function saveOrderAsync(order){
+  return new Promise((resolve, reject)=>{
+    if(typeof db==='undefined'){ reject('No DB'); return; }
+    db.collection('orders').doc(order.id).set(order)
+      .then(resolve).catch(reject);
+  });
+}
+
+// Offline banner UI
+function updateOfflineBanner(){
+  const banner = document.getElementById('offlineBanner');
+  const count = getQueueCount();
+  const online = navigator.onLine;
+  
+  if(!banner) return;
+  
+  if(!online){
+    banner.style.display='block';
+    banner.style.background='#c94a1a';
+    banner.innerHTML='📵 <strong>Offline</strong> — Orders will be saved locally and synced when connection returns'
+      +(count>0?' · <strong>'+count+' queued</strong>':'');
+  } else if(count>0){
+    banner.style.display='block';
+    banner.style.background='#c9920a';
+    banner.innerHTML='🔄 <strong>Back online</strong> — Syncing '+count+' queued order'+(count>1?'s':'')+'...'
+      +' <button onclick="syncOfflineQueue()" style="margin-left:8px;background:#fff;color:#c9920a;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:700;">Sync Now</button>';
+    // Auto-sync
+    setTimeout(syncOfflineQueue, 1000);
+  } else {
+    banner.style.display='none';
+  }
+}
+
+// Listen for online/offline events
+window.addEventListener('online', ()=>{
+  console.log('[OFFLINE] Back online');
+  updateOfflineBanner();
+  setTimeout(syncOfflineQueue, 2000);
+});
+window.addEventListener('offline', ()=>{
+  console.log('[OFFLINE] Gone offline');
+  updateOfflineBanner();
+  showNotif('⚠️ No internet — orders will be queued locally','err');
+});
+
+// Check on load
+window.addEventListener('load', ()=>{
+  updateOfflineBanner();
+  if(navigator.onLine && getQueueCount()>0){
+    setTimeout(syncOfflineQueue, 3000);
+  }
+});
+
+// Wrap saveOrder to handle offline
+const _originalSaveOrder = typeof saveOrder !== 'undefined' ? saveOrder : null;
+function saveOrderWithOfflineFallback(order){
+  if(!navigator.onLine){
+    // Store in DB.orders locally
+    if(!DB.orders.find(o=>o.id===order.id)){
+      DB.orders.unshift(order);
+    }
+    addToOfflineQueue(order);
+    return;
+  }
+  // Online - normal save
+  saveOrder(order);
 }
 
 // ── INIT ──
