@@ -35,7 +35,8 @@
 };
     // Only initialize if not already done
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db=firebase.firestore();
+    window.db=firebase.firestore();
+    console.log('Firestore initialized');
   </script>
 </head>
 <body>
@@ -107,8 +108,9 @@ async function submitCustomerComplaint(){
   };
   try{
     // Use Firebase SDK (handles auth properly)
-    if(typeof db!=='undefined'){
-      await db.collection('complaints').doc(complaint.id).set(complaint);
+    const _dbC=window.db||db;
+    if(typeof _dbC!=='undefined'){
+      await _dbC.collection('complaints').doc(complaint.id).set(complaint);
       document.getElementById('compFormArea').style.display='none';
       document.getElementById('compSuccess').style.display='block';
       ['cc-order','cc-name','cc-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -151,8 +153,9 @@ async function check(){
     if(!isPhone){
       // Direct order ID lookup
       const q=raw.toUpperCase();
-      if(typeof db!=='undefined'){
-        const doc=await db.collection('orders').doc(q).get();
+      const _db2=window.db||db;
+      if(typeof _db2!=='undefined'){
+        const doc=await _db2.collection('orders').doc(q).get();
         if(doc.exists){
           const d=doc.data();
           const f={};
@@ -179,8 +182,9 @@ async function check(){
       // Phone number — query Firestore with structuredQuery
       const phone=raw.replace(/\s/g,'');
       // Use Firebase SDK for phone search
-      if(typeof db!=='undefined'){
-        const snap=await db.collection('orders')
+      const _db=window.db||db;
+      if(typeof _db!=='undefined'){
+        const snap=await _db.collection('orders')
           .where('customerPhone','==',phone)
           .orderBy('createdAt','desc')
           .limit(10)
@@ -207,8 +211,11 @@ async function check(){
       }
     }
   }catch(e){
-    console.error(e);
-    res.innerHTML='<p style="color:#f87171;text-align:center;">Unable to connect. Please check your internet and try again.</p>';
+    console.error('Check error:',e);
+    const msg=e?.code==='permission-denied'?'Access denied. Please contact us directly.'
+      :e?.code==='unavailable'?'Service temporarily unavailable. Try again shortly.'
+      :'Error: '+(e?.message||'Unknown error')+'. Please try again.';
+    res.innerHTML='<p style="color:#f87171;text-align:center;">'+msg+'</p>';
   }
 }
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
