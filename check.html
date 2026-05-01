@@ -21,6 +21,22 @@
   .ready{background:#14532d;color:#86efac;} .collected{background:#374151;color:#d1d5db;}
   .delivery{background:#5b21b6;color:#c4b5fd;}
 </style>
+  <!-- Firebase SDK for customer portal -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyDyqqoj11-IUfTJvTrxXCxLH_gFypxhFEM",
+  authDomain: "nervollaundry-8978e.firebaseapp.com",
+  projectId: "nervollaundry-8978e",
+  storageBucket: "nervollaundry-8978e.firebasestorage.app",
+  messagingSenderId: "359468253380",
+  appId: "1:359468253380:web:a2b4a39f98920723380991"
+};
+    // Only initialize if not already done
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db=firebase.firestore();
+  </script>
 </head>
 <body>
 <div class="card">
@@ -75,6 +91,8 @@ async function submitCustomerComplaint(){
   const desc=(document.getElementById('cc-desc')?.value||'').trim();
   if(!name){alert('Please enter your name.');return;}
   if(!desc){alert('Please describe your issue.');return;}
+  const btn=document.querySelector('#compFormArea button');
+  if(btn){btn.disabled=true;btn.textContent='Submitting...';}
   const complaint={
     id:'comp'+Date.now(),
     orderId:(document.getElementById('cc-order')?.value||'').trim(),
@@ -88,28 +106,14 @@ async function submitCustomerComplaint(){
     createdAt:new Date().toISOString()
   };
   try{
-    const r=await fetch('https://firestore.googleapis.com/v1/projects/nervollaundry-8978e/databases/(default)/documents/complaints/'+complaint.id,{
-      method:'PATCH',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({fields:{
-        id:{stringValue:complaint.id},
-        orderId:{stringValue:complaint.orderId},
-        customerName:{stringValue:complaint.customerName},
-        type:{stringValue:complaint.type},
-        description:{stringValue:complaint.description},
-        branchId:{stringValue:complaint.branchId},
-        loggedBy:{stringValue:complaint.loggedBy},
-        status:{stringValue:complaint.status},
-        source:{stringValue:complaint.source},
-        createdAt:{stringValue:complaint.createdAt}
-      }})
-    });
-    if(r.ok){
+    // Use Firebase SDK (handles auth properly)
+    if(typeof db!=='undefined'){
+      await db.collection('complaints').doc(complaint.id).set(complaint);
       document.getElementById('compFormArea').style.display='none';
       document.getElementById('compSuccess').style.display='block';
       ['cc-order','cc-name','cc-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     } else {
-      alert('Submission failed. Please try again or call us directly.');
+      throw new Error('Firebase not loaded');
     }
   } catch(err){
     alert('No internet connection. Please try again when connected.');
@@ -147,44 +151,59 @@ async function check(){
     if(!isPhone){
       // Direct order ID lookup
       const q=raw.toUpperCase();
-      const r=await fetch(BASE+'/orders/'+encodeURIComponent(q));
-      if(r.ok){
-        const d=await r.json();
-        res.innerHTML='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Order Details</div>'+renderOrderResult(d.fields);
+      if(typeof db!=='undefined'){
+        const doc=await db.collection('orders').doc(q).get();
+        if(doc.exists){
+          const d=doc.data();
+          const f={};
+          Object.keys(d).forEach(k=>{
+            if(typeof d[k]==='string') f[k]={stringValue:d[k]};
+            else if(typeof d[k]==='number') f[k]={doubleValue:d[k]};
+            else if(typeof d[k]==='boolean') f[k]={booleanValue:d[k]};
+          });
+          res.innerHTML='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Order Details</div>'+renderOrderResult(f);
+        } else {
+          res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
+        }
       } else {
-        res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
+        // Fallback to REST
+        const r=await fetch(BASE+'/orders/'+encodeURIComponent(q));
+        if(r.ok){
+          const d=await r.json();
+          res.innerHTML='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Order Details</div>'+renderOrderResult(d.fields);
+        } else {
+          res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
+        }
       }
     } else {
       // Phone number — query Firestore with structuredQuery
       const phone=raw.replace(/\s/g,'');
-      const queryBody={
-        structuredQuery:{
-          from:[{collectionId:'orders'}],
-          where:{fieldFilter:{field:{fieldPath:'customerPhone'},op:'EQUAL',value:{stringValue:phone}}},
-          orderBy:[{field:{fieldPath:'createdAt'},direction:'DESCENDING'}],
-          limit:10
-        }
-      };
-      const r=await fetch(BASE+':runQuery',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(queryBody)
-      });
-      if(r.ok){
-        const docs=await r.json();
-        const valid=docs.filter(d=>d.document);
-        if(!valid.length){
+      // Use Firebase SDK for phone search
+      if(typeof db!=='undefined'){
+        const snap=await db.collection('orders')
+          .where('customerPhone','==',phone)
+          .orderBy('createdAt','desc')
+          .limit(10)
+          .get();
+        if(snap.empty){
           res.innerHTML='<p style="color:#f87171;text-align:center;">No orders found for that phone number.</p>';
           return;
         }
-        let html='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">'+valid.length+' Order'+(valid.length>1?'s':'')+'  Found</div>';
-        valid.forEach((d,i)=>{
-          if(i>0) html+='<div style="margin:12px 0 8px;border-top:1px solid #2a4a32;padding-top:8px;"></div>';
-          html+=renderOrderResult(d.document.fields);
+        let html='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">'+snap.size+' Order'+(snap.size>1?'s':'')+' Found</div>';
+        snap.forEach((doc,i)=>{
+          const d=doc.data();
+          // Convert plain JS object to mock Firestore fields for renderOrderResult
+          const f={};
+          Object.keys(d).forEach(k=>{
+            if(typeof d[k]==='string') f[k]={stringValue:d[k]};
+            else if(typeof d[k]==='number') f[k]={doubleValue:d[k]};
+            else if(typeof d[k]==='boolean') f[k]={booleanValue:d[k]};
+          });
+          html+=(i>0?'<div style="margin:12px 0 8px;border-top:1px solid #2a4a32;padding-top:8px;"></div>':'')+renderOrderResult(f);
         });
         res.innerHTML=html;
       } else {
-        res.innerHTML='<p style="color:#f87171;text-align:center;">Could not search. Please try your Order ID instead.</p>';
+        res.innerHTML='<p style="color:#f87171;text-align:center;">Could not connect. Please try your Order ID instead.</p>';
       }
     }
   }catch(e){
