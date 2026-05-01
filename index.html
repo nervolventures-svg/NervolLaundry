@@ -108,7 +108,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 .s-nav-tab .tab-badge{background:var(--accent2);color:#fff;border-radius:10px;padding:1px 6px;font-size:.66rem;font-weight:700;}
 .s-body{flex:1;min-height:0;padding:22px;max-width:1360px;margin:0 auto;width:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .s-page{display:none;}
-.s-page.show{display:block !important;}
+.s-page.show{display:block !important;min-height:200px;}
 
 /* ═══════════════ ADMIN SHELL ═══════════════ */
 #adminApp{display:none;min-height:100vh;}
@@ -2805,11 +2805,15 @@ function showSTab(tab,el){
   const pg=document.getElementById('sp-'+tab);
   if(pg)pg.classList.add('show');
   if(el)el.classList.add('active');
+  if(tab==='order'){
+    const wr=document.getElementById('weightRows');
+    if(!wr||wr.children.length===0) initOrderForm();
+  }
   if(tab==='board')renderBoard();
   if(tab==='shift')renderShift();
   if(tab==='customers')renderStaffCustomers();
   if(tab==='quote')initQuoteForm();
-  if(tab==='complaints')renderStaffComplaints();
+  if(tab==='complaints'){try{renderStaffComplaints();}catch(e){console.error('complaints render:',e);const p=document.getElementById('sp-complaints');if(p)p.innerHTML='<div class="card"><p>Error loading complaints. Please try again.</p></div>';}}
   if(tab==='expenditure'){renderSExpBody();const lbl=document.getElementById('sExpBranchLabel');if(lbl)lbl.textContent=branchName(CU._loginBranch);}
   }catch(e){console.error('showSTab:',tab,e);}
 }
@@ -4030,13 +4034,20 @@ function showAPage(page,el){
     if(page==='pettycash'){renderPettyCash();const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='float'){renderFloat();const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='turnaround'){const today=new Date().toISOString().split('T')[0];const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}if(to&&!to.value)to.value=today;renderTurnaround();}
-    if(page==='complaints'){
+    if(page==='pricing'){try{renderPricingPanel();}catch(e){}}
+    if(page==='expenditure'){try{renderExpBody();const d=new Date().toISOString().split('T')[0];const ed=document.getElementById('expDate');if(ed&&!ed.value)ed.value=d;}catch(e){}}
+    if(page==='reports'){try{renderReports();}catch(e){}}
+    if(page==='riders'){try{renderRiders();}catch(e){}}
+    if(page==='branches'){try{renderBranches();}catch(e){}}
+    if(page==='staff'){try{renderStaff();}catch(e){}}
+        if(page==='complaints'){
       try{renderAdminComplaints();}catch(e){console.error('complaints:',e);}
       const cb=document.getElementById('adm-comp-branch');
       if(cb)cb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
     }
     if(page==='ridertrips'){renderRiderTrips();const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');}
     if(page==='approvals')renderApprovals();
+    if(page==='auditlog'){try{renderAuditLog();}catch(e){}}
   }catch(e){console.error('showAPage:',page,e);}
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
@@ -6949,7 +6960,7 @@ function renderStaffComplaints(){
   const actionHeader=document.getElementById('compActionHeader');
   if(actionHeader)actionHeader.style.display=canResolve?'':'none';
   // Filter complaints
-  const seesAll=isMgr||isSupComp||CU?._loginBranch==='all';
+  const seesAll=isMgr||isSup||CU?._loginBranch==='all';
   let complaints=seesAll
     ? DB.complaints  // manager/supervisor/all-branch sees all
     : DB.complaints.filter(c=>c.branchId===CU._loginBranch);
