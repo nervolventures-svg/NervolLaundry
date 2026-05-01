@@ -3232,8 +3232,9 @@ function renderStaffCustomers(){
     return;
   }
   const isSup=CU?.roleLabel==='Supervisor';
-  custs=sortData(custs,'custTableBody',_custGetters);
-  setTimeout(()=>applySortHeaders('custTableBody'),50);
+  const _sCustGetters={name:c=>c.name,phone:c=>c.phone,orders:c=>c.totalOrders||0,spent:c=>c.totalSpent||0,since:c=>c.createdAt};
+  custs=sortData(custs,'sCustTableBody',_sCustGetters);
+  setTimeout(()=>applySortHeaders('sCustTableBody'),50);
   tbody.innerHTML=custs.map(c=>{
     const safeName=c.name.replace(/['"]/g,'');
     const delBtn=isSup

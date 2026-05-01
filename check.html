@@ -118,25 +118,79 @@ async function submitCustomerComplaint(){
 </script>
 
 <script>
+function renderOrderResult(f){
+  const status=f.status?.stringValue||'—';
+  const statusColor={pending:'#92400e',washing:'#1e3a8a',ready:'#14532d',collected:'#374151',delivery:'#5b21b6'}[status]||'#374151';
+  const statusText={pending:'🕐 Pending',washing:'🫧 Washing',ready:'✅ Ready for Pickup',collected:'📦 Collected',delivery:'🏍 Out for Delivery'}[status]||status;
+  return '<div class="row"><span class="lbl">Order ID</span><span class="val" style="font-size:.82rem;">'+(f.id?.stringValue||'—')+'</span></div>'
+    +'<div class="row"><span class="lbl">Customer</span><span class="val">'+(f.customerName?.stringValue||'—')+'</span></div>'
+    +'<div class="row"><span class="lbl">Branch</span><span class="val" style="font-size:.82rem;">'+(f.branchName?.stringValue||'—')+'</span></div>'
+    +'<div class="row"><span class="lbl">Summary</span><span class="val" style="font-size:.82rem;">'+(f.summary?.stringValue||'—')+'</span></div>'
+    +'<div class="row"><span class="lbl">Total</span><span class="val">GH₵'+parseFloat(f.total?.doubleValue||f.total?.integerValue||0).toFixed(2)+'</span></div>'
+    +'<div class="row"><span class="lbl">Balance Due</span><span class="val" style="color:'+(parseFloat(f.balanceDue?.doubleValue||f.balanceDue?.integerValue||0)>0?'#f87171':'#86efac')+';">GH₵'+parseFloat(f.balanceDue?.doubleValue||f.balanceDue?.integerValue||0).toFixed(2)+'</span></div>'
+    +'<div class="row"><span class="lbl">Date</span><span class="val" style="font-size:.82rem;">'+(f.createdAt?.stringValue||'—').slice(0,10)+'</span></div>'
+    +'<div class="row"><span class="lbl">Status</span><span class="val"><span class="status '+status+'" style="background:'+statusColor+'20;color:'+statusColor+';border:1px solid '+statusColor+'40;border-radius:20px;padding:3px 10px;font-size:.8rem;font-weight:700;">'+statusText+'</span></span></div>';
+}
+
 async function check(){
-  const q=document.getElementById('q').value.trim().toUpperCase();
-  if(!q)return;
+  const raw=document.getElementById('q').value.trim();
+  if(!raw)return;
   const res=document.getElementById('result');
-  res.style.display='block';res.innerHTML='<p style="color:#4a7a58;text-align:center;">Checking...</p>';
+  res.style.display='block';
+  res.innerHTML='<p style="color:#4a7a58;text-align:center;">🔍 Checking...</p>';
+
+  // Detect if input is a phone number (digits, possibly starting with 0 or +)
+  const isPhone=/^[0-9+\s]{7,15}$/.test(raw);
+  const BASE='https://firestore.googleapis.com/v1/projects/nervollaundry-8978e/databases/(default)/documents';
+
   try{
-    const r=await fetch('https://firestore.googleapis.com/v1/projects/nervollaundry-8978e/databases/(default)/documents/orders/'+encodeURIComponent(q));
-    if(r.ok){
-      const d=await r.json();const f=d.fields;
-      const status=f.status?.stringValue||'—';
-      res.innerHTML='<div class="row"><span class="lbl">Order ID</span><span class="val">'+f.id?.stringValue+'</span></div>'
-        +'<div class="row"><span class="lbl">Customer</span><span class="val">'+f.customerName?.stringValue+'</span></div>'
-        +'<div class="row"><span class="lbl">Total</span><span class="val">GH₵'+parseFloat(f.total?.doubleValue||f.total?.integerValue||0).toFixed(2)+'</span></div>'
-        +'<div class="row"><span class="lbl">Balance Due</span><span class="val">GH₵'+parseFloat(f.balanceDue?.doubleValue||f.balanceDue?.integerValue||0).toFixed(2)+'</span></div>'
-        +'<div class="row"><span class="lbl">Status</span><span class="val"><span class="status '+status+'">'+status.charAt(0).toUpperCase()+status.slice(1)+'</span></span></div>';
+    if(!isPhone){
+      // Direct order ID lookup
+      const q=raw.toUpperCase();
+      const r=await fetch(BASE+'/orders/'+encodeURIComponent(q));
+      if(r.ok){
+        const d=await r.json();
+        res.innerHTML='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Order Details</div>'+renderOrderResult(d.fields);
+      } else {
+        res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
+      }
     } else {
-      res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
+      // Phone number — query Firestore with structuredQuery
+      const phone=raw.replace(/\s/g,'');
+      const queryBody={
+        structuredQuery:{
+          from:[{collectionId:'orders'}],
+          where:{fieldFilter:{field:{fieldPath:'customerPhone'},op:'EQUAL',value:{stringValue:phone}}},
+          orderBy:[{field:{fieldPath:'createdAt'},direction:'DESCENDING'}],
+          limit:10
+        }
+      };
+      const r=await fetch(BASE+':runQuery',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(queryBody)
+      });
+      if(r.ok){
+        const docs=await r.json();
+        const valid=docs.filter(d=>d.document);
+        if(!valid.length){
+          res.innerHTML='<p style="color:#f87171;text-align:center;">No orders found for that phone number.</p>';
+          return;
+        }
+        let html='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">'+valid.length+' Order'+(valid.length>1?'s':'')+'  Found</div>';
+        valid.forEach((d,i)=>{
+          if(i>0) html+='<div style="margin:12px 0 8px;border-top:1px solid #2a4a32;padding-top:8px;"></div>';
+          html+=renderOrderResult(d.document.fields);
+        });
+        res.innerHTML=html;
+      } else {
+        res.innerHTML='<p style="color:#f87171;text-align:center;">Could not search. Please try your Order ID instead.</p>';
+      }
     }
-  }catch(e){res.innerHTML='<p style="color:#f87171;text-align:center;">Unable to connect. Try again.</p>';}
+  }catch(e){
+    console.error(e);
+    res.innerHTML='<p style="color:#f87171;text-align:center;">Unable to connect. Please check your internet and try again.</p>';
+  }
 }
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
 </script>
