@@ -908,6 +908,15 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
     <!-- ORDERS BOARD -->
     <div class="s-page" id="sp-board">
+      <!-- SUPERVISOR MINI DASHBOARD -->
+      <div id="supDashRow" style="display:none;margin-bottom:12px;">
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0;">
+          <div class="stat-card"><div class="stat-val blue" id="sup-active">—</div><div class="stat-label">Active Orders</div></div>
+          <div class="stat-card"><div class="stat-val orange" id="sup-overdue">—</div><div class="stat-label">Overdue</div></div>
+          <div class="stat-card"><div class="stat-val red" id="sup-unpaid">—</div><div class="stat-label">Unpaid</div></div>
+          <div class="stat-card"><div class="stat-val green" id="sup-today">—</div><div class="stat-label">Today Orders</div></div>
+        </div>
+      </div>
       <!-- BULK ACTION BAR -->
       <div id="bulkActionBar" style="display:none;position:sticky;top:0;z-index:50;background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;margin-bottom:10px;align-items:center;gap:10px;flex-wrap:wrap;">
         <span id="bulkCount" style="font-weight:700;"></span>
@@ -1010,6 +1019,23 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <button class="btn btn-primary" onclick="supervisorLogExp()">+ Log Expense</button>
       </div>
 
+      <!-- EXPENDITURE LIST -->
+      <div class="card">
+        <div class="card-title">📋 Expenditure Log</div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr>
+              <th class="sortable" data-col="date" onclick="sortBy('sExpBody','date',renderSExpBody)">Date</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th class="sortable" data-col="amount" onclick="sortBy('sExpBody','amount',renderSExpBody)">Amount</th>
+              <th>By</th>
+            </tr></thead>
+            <tbody id="sExpBody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- This branch expenses log -->
       <div class="card">
         <div class="card-title">Recent Expenses — <span id="sExpBranchLabel">—</span></div>
@@ -1079,7 +1105,29 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div class="fg"><label>Description *</label><textarea id="comp-desc" placeholder="Describe the issue..."></textarea></div>
         <button class="btn btn-danger" onclick="staffLogComplaint()">⚠️ Log Complaint</button>
           <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Fill in the form above and click Log Complaint. Complaints are visible to Admin for review.</p>
+     
+
+      <!-- FILTER TABS -->
+      <div style="display:flex;gap:6px;margin:12px 0 8px;flex-wrap:wrap;">
+        <button class="btn btn-xs ftab active" id="staffCompAllTab" onclick="setStaffCompFilter('all',this)">All</button>
+        <button class="btn btn-xs ftab" id="staffCompOpenTab" onclick="setStaffCompFilter('open',this)">Open</button>
+        <button class="btn btn-xs ftab" id="staffCompResolvedTab" onclick="setStaffCompFilter('resolved',this)" style="display:none;">Resolved</button>
       </div>
+
+      <!-- COMPLAINTS LIST -->
+      <div class="card">
+        <div class="card-title" id="compActionHeader">📋 Complaints</div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr>
+              <th>Date</th><th>Order</th><th>Type</th>
+              <th>Customer</th><th>Status</th><th id="compActionHeader" style="display:none;">Action</th>
+            </tr></thead>
+            <tbody id="compBody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">Recent Complaints</div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Order</th><th>Type</th><th>Customer</th><th>Status</th></tr></thead><tbody id="compBody"></tbody></table></div>
