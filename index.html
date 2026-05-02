@@ -273,6 +273,7 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
     <a href="#how">How It Works</a>
     <a href="#branches">Locations</a>
     <a href="#about">About Us</a>
+    <a href="#book">Book</a>
     <a href="https://nervollaundry.vercel.app/check" class="nav-cta">Track Order</a>
   </div>
   <button class="hamburger" onclick="toggleMenu()" id="hamburgerBtn" aria-label="Menu">
@@ -286,7 +287,9 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
   <a href="#how" onclick="toggleMenu()">How It Works</a>
   <a href="#branches" onclick="toggleMenu()">Locations</a>
   <a href="#about" onclick="toggleMenu()">About Us</a>
+  <a href="#book" onclick="toggleMenu()">Book a Service</a>
   <a href="https://nervollaundry.vercel.app/check" class="mob-cta">🔍 Track Your Order</a>
+  <a href="https://nervollaundry.vercel.app/check" onclick="toggleMenu()" style="color:var(--accent2);border-bottom-color:transparent;">⚠️ Lodge Complaint</a>
 </div>
 
 <!-- HERO -->
@@ -299,7 +302,7 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
       rider delivery — all handled with care so you never have to worry.
     </p>
     <div class="hero-actions">
-      <a href="https://wa.me/233XXXXXXXXX?text=Hi Nervol Laundry, I'd like to book a laundry service" class="btn-primary">
+      <a href="https://wa.me/233539973070?text=Hi Nervol Laundry, I'd like to book a laundry service" class="btn-primary">
         📲 Book via WhatsApp
       </a>
       <a href="https://nervollaundry.vercel.app/check" class="btn-outline">
@@ -367,6 +370,35 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
       <p>Can't make it to us? Our riders come to you for pickup and delivery right to your door.</p>
       <span class="service-price">Ask about delivery rates</span>
     </div>
+
+    <!-- CLEANING SERVICES -->
+    <div class="service-card" style="grid-column:1/-1;background:linear-gradient(135deg,#0c1f13,#1a3a22);color:#fff;border-color:#2a4a32;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:1.8rem;">🧹</span>
+        <span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#86efac;background:rgba(134,239,172,.12);padding:4px 10px;border-radius:20px;">Also Available</span>
+      </div>
+      <h3 style="color:#fff;font-size:1.05rem;margin-bottom:8px;">Professional Cleaning Services</h3>
+      <p style="color:rgba(255,255,255,.65);margin-bottom:16px;">Beyond laundry — Nervol also provides thorough cleaning services for homes, offices, schools, and move-in/move-out cleanups. Fresh space, fresh start.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+        <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.2rem;">🏠</span>
+          <div><div style="font-size:.84rem;font-weight:700;color:#fff;">Home Cleaning</div><div style="font-size:.74rem;color:rgba(255,255,255,.5);">Rooms, kitchens, bathrooms</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.2rem;">🏢</span>
+          <div><div style="font-size:.84rem;font-weight:700;color:#fff;">Office Cleaning</div><div style="font-size:.74rem;color:rgba(255,255,255,.5);">Workspaces &amp; reception areas</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.2rem;">🏫</span>
+          <div><div style="font-size:.84rem;font-weight:700;color:#fff;">School Cleaning</div><div style="font-size:.74rem;color:rgba(255,255,255,.5);">Classrooms &amp; common areas</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.2rem;">📦</span>
+          <div><div style="font-size:.84rem;font-weight:700;color:#fff;">Move-in / Move-out</div><div style="font-size:.74rem;color:rgba(255,255,255,.5);">Deep clean before or after</div></div>
+        </div>
+      </div>
+      <a href="#book" style="display:inline-flex;align-items:center;gap:8px;margin-top:16px;background:#1a6b3c;color:#fff;padding:10px 20px;border-radius:30px;font-size:.84rem;font-weight:700;text-decoration:none;">📲 Book Cleaning Service →</a>
+    </div>
   </div>
 </section>
 
@@ -409,10 +441,10 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
     <p class="section-sub">We're positioned across Tarkwa so you're never far from a Nervol branch.</p>
   </div>
   <div class="branches-grid">
-    <div class="branch-card">
-      <div class="branch-tag">Main Branch</div>
+    <div class="branch-card" style="border-color:rgba(134,239,172,.3);">
+      <div class="branch-tag" style="background:rgba(134,239,172,.2);color:#86efac;">⭐ Main Branch</div>
       <h3>🧺 Wash Station</h3>
-      <p>Tarkwa Main</p>
+      <p>Kwabedu, Tarkwa</p>
       <div class="branch-hours">🕐 Open Daily</div>
     </div>
     <div class="branch-card">
@@ -499,13 +531,59 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
   </div>
 </section>
 
+<!-- BOOK SERVICES -->
+<section id="book" style="background:var(--cream);padding:80px 5%;">
+  <div class="section-header center">
+    <div class="section-label">Book a Service</div>
+    <h2 class="section-title">How Would You Like to Reach Us?</h2>
+    <p class="section-sub">Choose whichever is easiest for you — WhatsApp, a call, or our online tracking portal.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:900px;margin:0 auto;">
+
+    <div style="text-decoration:none;">
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;border:1px solid #e8e4de;text-align:center;">
+        <div style="font-size:2.4rem;margin-bottom:12px;">📞</div>
+        <div style="font-weight:700;font-size:1rem;color:var(--ink);margin-bottom:6px;">Contact Us</div>
+        <div style="font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:16px;">Reach us directly — WhatsApp for bookings or call us for immediate assistance.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="https://wa.me/233539973070?text=Hi Nervol Laundry, I'd like to book a service" style="background:#25d366;color:#fff;padding:10px 20px;border-radius:30px;font-size:.83rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+            📲 WhatsApp: +233 53 997 3070
+          </a>
+          <a href="tel:+233203473440" style="background:var(--green);color:#fff;padding:10px 20px;border-radius:30px;font-size:.83rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+            📞 Call: +233 20 347 3440
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <a href="https://nervollaundry.vercel.app/check" style="text-decoration:none;">
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;border:1px solid #e8e4de;text-align:center;transition:box-shadow .2s,transform .2s;cursor:pointer;" onmouseover="this.style.boxShadow='0 8px 32px rgba(0,0,0,.1)';this.style.transform='translateY(-3px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+        <div style="font-size:2.4rem;margin-bottom:12px;">🔍</div>
+        <div style="font-weight:700;font-size:1rem;color:var(--ink);margin-bottom:6px;">Track My Order</div>
+        <div style="font-size:.82rem;color:var(--muted);line-height:1.6;">Enter your Order ID or phone number to see real-time status of your laundry or cleaning job.</div>
+        <div style="margin-top:16px;background:var(--green);color:#fff;padding:9px 20px;border-radius:30px;font-size:.83rem;font-weight:700;display:inline-block;">Check Status →</div>
+      </div>
+    </a>
+
+    <a href="https://nervollaundry.vercel.app/check" style="text-decoration:none;">
+      <div style="background:#fff;border-radius:14px;padding:28px 24px;border:1px solid #e8e4de;text-align:center;transition:box-shadow .2s,transform .2s;cursor:pointer;" onmouseover="this.style.boxShadow='0 8px 32px rgba(0,0,0,.1)';this.style.transform='translateY(-3px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+        <div style="font-size:2.4rem;margin-bottom:12px;">⚠️</div>
+        <div style="font-weight:700;font-size:1rem;color:var(--ink);margin-bottom:6px;">Lodge a Complaint</div>
+        <div style="font-size:.82rem;color:var(--muted);line-height:1.6;">Had an issue? Let us know. We take every complaint seriously and respond within 24 hours.</div>
+        <div style="margin-top:16px;background:var(--accent2);color:#fff;padding:9px 20px;border-radius:30px;font-size:.83rem;font-weight:700;display:inline-block;">Submit Complaint →</div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
 <!-- CTA -->
 <section class="cta-section">
   <div class="section-label" style="color:#86efac;">Get Started</div>
   <h2 class="section-title">Ready for Cleaner Clothes?</h2>
   <p class="section-sub">Visit any branch, book a pickup via WhatsApp, or track an existing order — we're always there for you.</p>
   <div class="cta-buttons">
-    <a href="https://wa.me/233XXXXXXXXX?text=Hi Nervol Laundry, I'd like to book a laundry service" class="btn-white">
+    <a href="https://wa.me/233539973070?text=Hi Nervol Laundry, I'd like to book a laundry service" class="btn-white">
       📲 Book via WhatsApp
     </a>
     <a href="https://nervollaundry.vercel.app/check" class="btn-ghost-white">
@@ -527,7 +605,7 @@ footer img{height:32px;opacity:.6;filter:brightness(0) invert(1);}
     <a href="https://nervollaundry.vercel.app/check">Lodge Complaint</a>
     <a href="/app">Staff Login</a>
   </div>
-  <div class="footer-copy">© 2026 Nervol Ventures · Tarkwa, Ghana · Always there for u</div>
+  <div class="footer-copy">© 2026 Nervol Ventures · Tarkwa, Ghana · Always there for u<br><span style="margin-top:6px;display:inline-block;">📲 <a href="https://wa.me/233539973070" style="color:rgba(255,255,255,.5);text-decoration:none;">+233 53 997 3070</a> &nbsp;|&nbsp; 📞 <a href="tel:+233203473440" style="color:rgba(255,255,255,.5);text-decoration:none;">+233 20 347 3440</a></span></div>
 </footer>
 
 <script>
