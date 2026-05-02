@@ -1977,7 +1977,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <!-- DEBT TRACKER -->
       <div class="a-page" id="ap-debttracker">
         <div class="card">
-          <div class="card-title">💳 Debt Tracker</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">💳 Debt Tracker</div>
+            <div id="debtSummary" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+          </div>
           <div class="board-bar">
             <input type="text" class="search-input" id="debtSearch" placeholder="🔍 Search customer..." oninput="renderDebtTracker()">
           </div>
