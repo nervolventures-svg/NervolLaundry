@@ -1,8 +1,8 @@
 {
   "name": "Nervol Laundry Management",
   "short_name": "Nervol Laundry",
-  "description": "Nervol Ventures Laundry Management Platform — Order, track and manage laundry operations across all branches.",
-  "start_url": "/",
+  "description": "Nervol Ventures Laundry Management Platform \u2014 Order, track and manage laundry operations across all branches.",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#f2efe9",
   "theme_color": "#1a6b3c",
@@ -23,21 +23,34 @@
     }
   ],
   "screenshots": [],
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "shortcuts": [
     {
       "name": "New Order",
       "short_name": "New Order",
       "description": "Create a new laundry order",
-      "url": "/?shortcut=neworder",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/app?shortcut=neworder",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Track Order",
       "short_name": "Track",
       "description": "Track your laundry order",
       "url": "/check",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

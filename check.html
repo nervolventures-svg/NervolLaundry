@@ -4,66 +4,75 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Track Your Order — Nervol Laundry</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:#0c1a10;color:#e0f0e8;font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:16px;}
-  .card{background:#162a1c;border-radius:16px;padding:28px 24px;max-width:460px;width:100%;}
-  h1{font-size:1.3rem;color:#4adc7a;margin-bottom:4px;}
-  p{font-size:.82rem;color:#4a7a58;margin-bottom:20px;}
-  input{width:100%;padding:12px 14px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:1rem;margin-bottom:12px;}
-  button{width:100%;padding:13px;background:#2a7a4a;color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;}
-  #result{margin-top:16px;background:#0c1a10;border-radius:10px;padding:14px;display:none;}
-  .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a3a22;font-size:.85rem;}
-  .lbl{color:#4a7a58;}
-  .val{font-weight:600;color:#e0f0e8;}
-  .status{padding:4px 10px;border-radius:20px;font-size:.75rem;font-weight:700;}
-  .pending{background:#92400e;color:#fcd34d;} .washing{background:#1e3a8a;color:#93c5fd;}
-  .ready{background:#14532d;color:#86efac;} .collected{background:#374151;color:#d1d5db;}
-  .delivery{background:#5b21b6;color:#c4b5fd;}
+  body{background:#0c1a10;color:#e0f0e8;font-family:'DM Sans',sans-serif;min-height:100vh;
+       display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+       padding:24px 16px;gap:16px;}
+  .card{background:#162a1c;border-radius:16px;padding:24px;width:100%;max-width:480px;}
+  .card-title{font-size:1.1rem;font-weight:700;color:#4adc7a;margin-bottom:4px;}
+  .card-sub{font-size:.82rem;color:#4a7a58;margin-bottom:18px;}
+  label{font-size:.72rem;color:#4a7a58;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:5px;font-weight:600;}
+  input,select,textarea{width:100%;padding:11px 13px;background:#0c1a10;border:1.5px solid #2a4a32;
+    border-radius:8px;color:#e0f0e8;font-size:.92rem;font-family:'DM Sans',sans-serif;
+    transition:border .2s;margin-bottom:12px;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#4adc7a;}
+  .btn-green{width:100%;padding:13px;background:#2a7a4a;color:#fff;border:none;border-radius:8px;
+    font-size:.95rem;font-weight:700;cursor:pointer;transition:background .2s;font-family:inherit;}
+  .btn-green:hover{background:#1a6b3c;}
+  .btn-red{width:100%;padding:13px;background:#c94a1a;color:#fff;border:none;border-radius:8px;
+    font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-red:disabled{opacity:.6;cursor:not-allowed;}
+  #result{margin-top:14px;display:none;}
+  .order-card{background:#0c1a10;border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid #2a4a32;}
+  .order-row{display:flex;justify-content:space-between;align-items:center;
+    padding:6px 0;border-bottom:1px solid #1a3a22;font-size:.84rem;}
+  .order-row:last-child{border-bottom:none;}
+  .order-lbl{color:#4a7a58;font-size:.76rem;text-transform:uppercase;letter-spacing:.5px;}
+  .order-val{font-weight:600;color:#e0f0e8;text-align:right;max-width:60%;word-break:break-all;}
+  .status-badge{padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:700;display:inline-block;}
+  .pending{background:#92400e33;color:#fcd34d;border:1px solid #92400e66;}
+  .washing{background:#1e3a8a33;color:#93c5fd;border:1px solid #1e3a8a66;}
+  .ready{background:#14532d33;color:#86efac;border:1px solid #14532d66;}
+  .collected{background:#37415133;color:#d1d5db;border:1px solid #37415166;}
+  .delivery{background:#5b21b633;color:#c4b5fd;border:1px solid #5b21b666;}
+  .msg-err{color:#f87171;text-align:center;padding:12px;font-size:.88rem;}
+  .msg-ok{color:#4adc7a;text-align:center;padding:12px;font-size:.88rem;}
+  .success-box{text-align:center;padding:20px;}
+  .results-header{font-size:.72rem;color:#4a7a58;text-transform:uppercase;letter-spacing:.8px;
+    font-weight:700;margin-bottom:10px;}
 </style>
-  <!-- Firebase SDK for customer portal -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-  apiKey: "AIzaSyDyqqoj11-IUfTJvTrxXCxLH_gFypxhFEM",
-  authDomain: "nervollaundry-8978e.firebaseapp.com",
-  projectId: "nervollaundry-8978e",
-  storageBucket: "nervollaundry-8978e.firebasestorage.app",
-  messagingSenderId: "359468253380",
-  appId: "1:359468253380:web:a2b4a39f98920723380991"
-};
-    // Only initialize if not already done
-    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    window.db=firebase.firestore();
-    console.log('Firestore initialized');
-  </script>
 </head>
 <body>
+
+<!-- ORDER TRACKING CARD -->
 <div class="card">
-  <h1>🧺 Track Your Order</h1>
-  <p>Enter your Order ID or phone number below</p>
-  <input type="text" id="q" placeholder="NL-2026-... or 0244123456" />
-  <button onclick="check()">🔍 Check Status</button>
+  <div class="card-title">🧺 Track Your Order</div>
+  <div class="card-sub">Enter your Order ID (e.g. NL-2026-WS-AMA-M04C8T) or your phone number</div>
+  <label>Order ID or Phone Number</label>
+  <input type="text" id="q" placeholder="NL-2026-... or 0244123456" autocomplete="off">
+  <button class="btn-green" onclick="checkOrder()">🔍 Check Status</button>
   <div id="result"></div>
 </div>
 
-<!-- CUSTOMER COMPLAINT FORM -->
+<!-- COMPLAINT FORM CARD -->
 <div class="card">
-  <h1 style="font-size:1rem;margin-bottom:4px;">⚠️ Lodge a Complaint</h1>
-  <p>Have an issue with your order? Let us know below.</p>
+  <div class="card-title">⚠️ Lodge a Complaint</div>
+  <div class="card-sub">Have an issue with your laundry? Let us know and we'll resolve it.</div>
+
   <div id="compFormArea">
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">ORDER ID (if known)</label>
-      <input type="text" id="cc-order" placeholder="NL-2026-..." style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;">
+    <div>
+      <label>Order ID (if known)</label>
+      <input type="text" id="cc-order" placeholder="NL-2026-...">
     </div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">YOUR NAME *</label>
-      <input type="text" id="cc-name" placeholder="Your name" style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;">
+    <div>
+      <label>Your Name *</label>
+      <input type="text" id="cc-name" placeholder="Your full name">
     </div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">TYPE</label>
-      <select id="cc-type" style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;">
+    <div>
+      <label>Issue Type</label>
+      <select id="cc-type">
         <option value="quality">Quality Issue</option>
         <option value="damage">Item Damaged</option>
         <option value="missing">Item Missing</option>
@@ -72,153 +81,192 @@
         <option value="other">Other</option>
       </select>
     </div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:.75rem;color:#4a7a58;display:block;margin-bottom:4px;">DESCRIPTION *</label>
-      <textarea id="cc-desc" placeholder="Describe your issue..." rows="3" style="width:100%;padding:10px 12px;background:#0c1a10;border:1px solid #2a4a32;border-radius:8px;color:#e0f0e8;font-size:.9rem;box-sizing:border-box;resize:vertical;"></textarea>
+    <div>
+      <label>Description *</label>
+      <textarea id="cc-desc" placeholder="Describe your issue in detail..." rows="4"></textarea>
     </div>
-    <button onclick="submitCustomerComplaint()" style="width:100%;padding:13px;background:#c94a1a;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;">⚠️ Submit Complaint</button>
+    <button class="btn-red" id="compBtn" onclick="submitComplaint()">⚠️ Submit Complaint</button>
+    <p style="font-size:.74rem;color:#4a7a58;margin-top:8px;text-align:center;">
+      We respond within 24 hours · You can also WhatsApp us directly
+    </p>
   </div>
-  <div id="compSuccess" style="display:none;text-align:center;padding:16px;">
-    <div style="font-size:2rem;margin-bottom:8px;">✅</div>
-    <div style="font-weight:700;color:#4adc7a;">Complaint Received</div>
-    <div style="font-size:.8rem;color:#4a7a58;margin-top:4px;">Thank you. Our team will review your complaint and get back to you.</div>
-    <button onclick="document.getElementById('compSuccess').style.display='none';document.getElementById('compFormArea').style.display='block';" style="margin-top:12px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;">Submit Another</button>
+
+  <div id="compSuccess" style="display:none;">
+    <div class="success-box">
+      <div style="font-size:2.5rem;margin-bottom:10px;">✅</div>
+      <div style="font-weight:700;color:#4adc7a;font-size:1.05rem;margin-bottom:6px;">Complaint Received</div>
+      <div style="font-size:.82rem;color:#4a7a58;">Our team will review and contact you shortly.</div>
+      <button onclick="resetComplaint()" style="margin-top:16px;background:rgba(255,255,255,.12);color:#e0f0e8;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;font-size:.85rem;">Submit Another</button>
+    </div>
   </div>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
 <script>
-async function submitCustomerComplaint(){
-  const name=(document.getElementById('cc-name')?.value||'').trim();
-  const desc=(document.getElementById('cc-desc')?.value||'').trim();
-  if(!name){alert('Please enter your name.');return;}
-  if(!desc){alert('Please describe your issue.');return;}
-  const btn=document.querySelector('#compFormArea button');
-  if(btn){btn.disabled=true;btn.textContent='Submitting...';}
-  const complaint={
-    id:'comp'+Date.now(),
-    orderId:(document.getElementById('cc-order')?.value||'').trim(),
-    customerName:name,
-    type:document.getElementById('cc-type')?.value||'other',
-    description:desc,
-    branchId:'',
-    loggedBy:'Customer (self-service)',
-    status:'open',
-    source:'customer-portal',
-    createdAt:new Date().toISOString()
+// ── Firebase Init ──
+const firebaseConfig = {
+  apiKey: "AIzaSyDyqqoj11-IUfTJvTrxXCxLH_gFypxhFEM",
+  authDomain: "nervollaundry-8978e.firebaseapp.com",
+  projectId: "nervollaundry-8978e",
+  storageBucket: "nervollaundry-8978e.firebasestorage.app",
+  messagingSenderId: "359468253380",
+  appId: "1:359468253380:web:a2b4a39f98920723380991"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+// ── Status display labels ──
+const STATUS_LABEL = {
+  pending:  '🕐 Pending',
+  washing:  '🫧 Washing',
+  ready:    '✅ Ready for Collection',
+  collected:'📦 Collected',
+  delivery: '🏍 Out for Delivery'
+};
+
+function renderOrder(o) {
+  const status = o.status || 'pending';
+  const label  = STATUS_LABEL[status] || status;
+  const bal    = parseFloat(o.balanceDue || 0);
+  return `
+    <div class="order-card">
+      <div class="order-row">
+        <span class="order-lbl">Order ID</span>
+        <span class="order-val" style="font-size:.76rem;">${o.id || '—'}</span>
+      </div>
+      <div class="order-row">
+        <span class="order-lbl">Customer</span>
+        <span class="order-val">${o.customerName || '—'}</span>
+      </div>
+      <div class="order-row">
+        <span class="order-lbl">Branch</span>
+        <span class="order-val" style="font-size:.8rem;">${o.branchName || '—'}</span>
+      </div>
+      <div class="order-row">
+        <span class="order-lbl">Summary</span>
+        <span class="order-val" style="font-size:.8rem;">${o.summary || '—'}</span>
+      </div>
+      <div class="order-row">
+        <span class="order-lbl">Total</span>
+        <span class="order-val">GH₵${parseFloat(o.total||0).toFixed(2)}</span>
+      </div>
+      ${bal > 0 ? `<div class="order-row">
+        <span class="order-lbl">Balance Due</span>
+        <span class="order-val" style="color:#f87171;">GH₵${bal.toFixed(2)}</span>
+      </div>` : ''}
+      <div class="order-row">
+        <span class="order-lbl">Date</span>
+        <span class="order-val" style="font-size:.8rem;">${(o.createdAt||'').slice(0,10)}</span>
+      </div>
+      <div class="order-row" style="border-bottom:none;">
+        <span class="order-lbl">Status</span>
+        <span class="order-val"><span class="status-badge ${status}">${label}</span></span>
+      </div>
+    </div>`;
+}
+
+async function checkOrder() {
+  const raw = document.getElementById('q').value.trim();
+  if (!raw) return;
+  const res = document.getElementById('result');
+  res.style.display = 'block';
+  res.innerHTML = '<p class="msg-ok">🔍 Searching...</p>';
+
+  // Detect phone: 7+ digits, may start with 0 or +
+  const isPhone = /^[+0][0-9]{6,14}$/.test(raw.replace(/\s/g,''));
+
+  try {
+    if (!isPhone) {
+      // Order ID lookup
+      const docRef = await db.collection('orders').doc(raw.toUpperCase()).get();
+      if (docRef.exists) {
+        res.innerHTML = '<div class="results-header">Order Details</div>' + renderOrder(docRef.data());
+      } else {
+        res.innerHTML = '<p class="msg-err">Order not found. Please check your Order ID.</p>';
+      }
+    } else {
+      // Phone number — query without orderBy to avoid index requirement
+      const phone = raw.replace(/\s/g, '');
+      const snap = await db.collection('orders')
+        .where('customerPhone', '==', phone)
+        .get();
+
+      if (snap.empty) {
+        res.innerHTML = '<p class="msg-err">No orders found for this phone number.<br><span style="font-size:.8rem;color:#4a7a58;">Try your Order ID instead.</span></p>';
+        return;
+      }
+
+      // Sort by date in JS (avoids needing composite Firestore index)
+      const orders = [];
+      snap.forEach(doc => orders.push(doc.data()));
+      orders.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+
+      res.innerHTML = `<div class="results-header">${orders.length} Order${orders.length>1?'s':''} Found</div>`
+        + orders.map(o => renderOrder(o)).join('');
+    }
+  } catch(e) {
+    console.error('Check error:', e);
+    let msg = 'Something went wrong. Please try again.';
+    if (e.code === 'permission-denied') msg = 'Access denied — please contact us directly.';
+    else if (e.code === 'unavailable') msg = 'Service temporarily unavailable. Try again shortly.';
+    else if (e.message) msg = e.message;
+    res.innerHTML = '<p class="msg-err">' + msg + '</p>';
+  }
+}
+
+async function submitComplaint() {
+  const name = (document.getElementById('cc-name').value || '').trim();
+  const desc = (document.getElementById('cc-desc').value || '').trim();
+  if (!name) { alert('Please enter your name.'); return; }
+  if (!desc) { alert('Please describe the issue.'); return; }
+
+  const btn = document.getElementById('compBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Submitting...';
+
+  const complaint = {
+    id: 'comp' + Date.now(),
+    orderId: (document.getElementById('cc-order').value || '').trim(),
+    customerName: name,
+    type: document.getElementById('cc-type').value || 'other',
+    description: desc,
+    branchId: '',
+    loggedBy: 'Customer (self-service)',
+    status: 'open',
+    source: 'customer-portal',
+    createdAt: new Date().toISOString()
   };
-  try{
-    // Use Firebase SDK (handles auth properly)
-    const _dbC=window.db||db;
-    if(typeof _dbC!=='undefined'){
-      await _dbC.collection('complaints').doc(complaint.id).set(complaint);
-      document.getElementById('compFormArea').style.display='none';
-      document.getElementById('compSuccess').style.display='block';
-      ['cc-order','cc-name','cc-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    } else {
-      throw new Error('Firebase not loaded');
-    }
-  } catch(err){
-    alert('No internet connection. Please try again when connected.');
+
+  try {
+    await db.collection('complaints').doc(complaint.id).set(complaint);
+    document.getElementById('compFormArea').style.display = 'none';
+    document.getElementById('compSuccess').style.display = 'block';
+    ['cc-order','cc-name','cc-desc'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  } catch(e) {
+    console.error('Complaint error:', e);
+    btn.disabled = false;
+    btn.textContent = '⚠️ Submit Complaint';
+    let msg = 'Submission failed. Please try again.';
+    if (e.code === 'permission-denied') msg = 'Server blocked submission. Please contact us directly on WhatsApp.';
+    alert(msg);
   }
 }
-</script>
 
-<script>
-function renderOrderResult(f){
-  const status=f.status?.stringValue||'—';
-  const statusColor={pending:'#92400e',washing:'#1e3a8a',ready:'#14532d',collected:'#374151',delivery:'#5b21b6'}[status]||'#374151';
-  const statusText={pending:'🕐 Pending',washing:'🫧 Washing',ready:'✅ Ready for Pickup',collected:'📦 Collected',delivery:'🏍 Out for Delivery'}[status]||status;
-  return '<div class="row"><span class="lbl">Order ID</span><span class="val" style="font-size:.82rem;">'+(f.id?.stringValue||'—')+'</span></div>'
-    +'<div class="row"><span class="lbl">Customer</span><span class="val">'+(f.customerName?.stringValue||'—')+'</span></div>'
-    +'<div class="row"><span class="lbl">Branch</span><span class="val" style="font-size:.82rem;">'+(f.branchName?.stringValue||'—')+'</span></div>'
-    +'<div class="row"><span class="lbl">Summary</span><span class="val" style="font-size:.82rem;">'+(f.summary?.stringValue||'—')+'</span></div>'
-    +'<div class="row"><span class="lbl">Total</span><span class="val">GH₵'+parseFloat(f.total?.doubleValue||f.total?.integerValue||0).toFixed(2)+'</span></div>'
-    +'<div class="row"><span class="lbl">Balance Due</span><span class="val" style="color:'+(parseFloat(f.balanceDue?.doubleValue||f.balanceDue?.integerValue||0)>0?'#f87171':'#86efac')+';">GH₵'+parseFloat(f.balanceDue?.doubleValue||f.balanceDue?.integerValue||0).toFixed(2)+'</span></div>'
-    +'<div class="row"><span class="lbl">Date</span><span class="val" style="font-size:.82rem;">'+(f.createdAt?.stringValue||'—').slice(0,10)+'</span></div>'
-    +'<div class="row"><span class="lbl">Status</span><span class="val"><span class="status '+status+'" style="background:'+statusColor+'20;color:'+statusColor+';border:1px solid '+statusColor+'40;border-radius:20px;padding:3px 10px;font-size:.8rem;font-weight:700;">'+statusText+'</span></span></div>';
+function resetComplaint() {
+  document.getElementById('compSuccess').style.display = 'none';
+  document.getElementById('compFormArea').style.display = 'block';
 }
 
-async function check(){
-  const raw=document.getElementById('q').value.trim();
-  if(!raw)return;
-  const res=document.getElementById('result');
-  res.style.display='block';
-  res.innerHTML='<p style="color:#4a7a58;text-align:center;">🔍 Checking...</p>';
-
-  // Detect if input is a phone number (digits, possibly starting with 0 or +)
-  const isPhone=/^[0-9+\s]{7,15}$/.test(raw);
-  const BASE='https://firestore.googleapis.com/v1/projects/nervollaundry-8978e/databases/(default)/documents';
-
-  try{
-    if(!isPhone){
-      // Direct order ID lookup
-      const q=raw.toUpperCase();
-      const _db2=window.db||db;
-      if(typeof _db2!=='undefined'){
-        const doc=await _db2.collection('orders').doc(q).get();
-        if(doc.exists){
-          const d=doc.data();
-          const f={};
-          Object.keys(d).forEach(k=>{
-            if(typeof d[k]==='string') f[k]={stringValue:d[k]};
-            else if(typeof d[k]==='number') f[k]={doubleValue:d[k]};
-            else if(typeof d[k]==='boolean') f[k]={booleanValue:d[k]};
-          });
-          res.innerHTML='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Order Details</div>'+renderOrderResult(f);
-        } else {
-          res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
-        }
-      } else {
-        // Fallback to REST
-        const r=await fetch(BASE+'/orders/'+encodeURIComponent(q));
-        if(r.ok){
-          const d=await r.json();
-          res.innerHTML='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Order Details</div>'+renderOrderResult(d.fields);
-        } else {
-          res.innerHTML='<p style="color:#f87171;text-align:center;">Order not found. Check your Order ID.</p>';
-        }
-      }
-    } else {
-      // Phone number — query Firestore with structuredQuery
-      const phone=raw.replace(/\s/g,'');
-      // Use Firebase SDK for phone search
-      const _db=window.db||db;
-      if(typeof _db!=='undefined'){
-        const snap=await _db.collection('orders')
-          .where('customerPhone','==',phone)
-          .orderBy('createdAt','desc')
-          .limit(10)
-          .get();
-        if(snap.empty){
-          res.innerHTML='<p style="color:#f87171;text-align:center;">No orders found for that phone number.</p>';
-          return;
-        }
-        let html='<div style="margin-bottom:8px;font-size:.75rem;color:#4a7a58;font-weight:700;text-transform:uppercase;letter-spacing:1px;">'+snap.size+' Order'+(snap.size>1?'s':'')+' Found</div>';
-        snap.forEach((doc,i)=>{
-          const d=doc.data();
-          // Convert plain JS object to mock Firestore fields for renderOrderResult
-          const f={};
-          Object.keys(d).forEach(k=>{
-            if(typeof d[k]==='string') f[k]={stringValue:d[k]};
-            else if(typeof d[k]==='number') f[k]={doubleValue:d[k]};
-            else if(typeof d[k]==='boolean') f[k]={booleanValue:d[k]};
-          });
-          html+=(i>0?'<div style="margin:12px 0 8px;border-top:1px solid #2a4a32;padding-top:8px;"></div>':'')+renderOrderResult(f);
-        });
-        res.innerHTML=html;
-      } else {
-        res.innerHTML='<p style="color:#f87171;text-align:center;">Could not connect. Please try your Order ID instead.</p>';
-      }
-    }
-  }catch(e){
-    console.error('Check error:',e);
-    const msg=e?.code==='permission-denied'?'Access denied. Please contact us directly.'
-      :e?.code==='unavailable'?'Service temporarily unavailable. Try again shortly.'
-      :'Error: '+(e?.message||'Unknown error')+'. Please try again.';
-    res.innerHTML='<p style="color:#f87171;text-align:center;">'+msg+'</p>';
-  }
-}
-document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+// Enter key support
+document.getElementById('q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkOrder();
+});
 </script>
 </body>
 </html>
