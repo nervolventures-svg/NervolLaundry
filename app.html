@@ -5750,7 +5750,7 @@ function admAddWeightRow(svc, kg){
     +'<input type="number" min="0" step="0.1" value="'+(kg||1)+'" placeholder="kg" oninput="admLiveCalc()" style="max-width:80px;">'
     +'<span class="row-sub green" id="adws-'+id+'">GH₵0.00</span>';
   div.appendChild(rmBtn);
-  const wr=document.getElementById('adm-weightRows');
+  const wr=$adm('adm-weightRows');
   if(wr)wr.appendChild(div);
   admLiveCalc();
 }
@@ -5763,7 +5763,7 @@ function admAddSpecialRow(){
   div.innerHTML='<select onchange="admLiveCalc()">'+opts+'</select><input type="number" min="1" value="1" oninput="admLiveCalc()">'
     +'<span class="row-sub gold" id="adss-'+id+'">GH₵0.00</span>';
   div.appendChild(rmBtnS);
-  const sr=document.getElementById('adm-specialRows');
+  const sr=$adm('adm-specialRows');
   if(sr)sr.appendChild(div);
   admLiveCalc();
 }
@@ -5776,7 +5776,7 @@ function admAddBeddingRow(){
   div.innerHTML='<select onchange="admLiveCalc()">'+opts+'</select><input type="number" min="1" value="1" oninput="admLiveCalc()">'
     +'<span class="row-sub blue" id="adbs-'+id+'">GH₵0.00</span>';
   div.appendChild(rmBtnB);
-  const br=document.getElementById('adm-beddingRows');
+  const br=$adm('adm-beddingRows');
   if(br)br.appendChild(div);
   admLiveCalc();
 }
@@ -5796,15 +5796,15 @@ function admApplyPromo(){
   admLiveCalc();
 }
 function admInitOrderForm(){
-  const wr=document.getElementById('adm-weightRows');
+  const wr=$adm('adm-weightRows');
   if(wr&&wr.children.length===0)admAddWeightRow('fold',1);
   admRenderTreatCards();
   // Wire payment select
-  const ps=document.getElementById('adm-payStatus');
+  const ps=$adm('adm-payStatus');
   if(ps&&!ps._wired){
     ps.addEventListener('change',function(){
-      const dw=document.getElementById('adm-depositWrap');
-      const mw=document.getElementById('adm-momoWrap');
+      const dw=$adm('adm-depositWrap');
+      const mw=$adm('adm-momoWrap');
       if(dw)dw.style.display=this.value==='partial'?'block':'none';
       if(mw)mw.style.display=this.value==='momo'?'block':'none';
       admLiveCalc();
@@ -5812,7 +5812,7 @@ function admInitOrderForm(){
     ps._wired=true;
   }
   // Populate rider select
-  const rs=document.getElementById('adm-riderSelect');
+  const rs=$adm('adm-riderSelect');
   if(rs)rs.innerHTML='<option value="">— No rider —</option>'+DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
   admLiveCalc();
 }
@@ -5836,13 +5836,13 @@ function admLiveCalc(){
     const el=document.getElementById('adbs-'+row.id);if(el)el.textContent='GH₵'+sub.toFixed(2);
   });
   DB.treatments.forEach(t=>{const cb=document.getElementById('adtrcb-'+t.id);if(cb&&cb.checked)trT+=t.price;});
-  const admOrderTypeEl=document.getElementById('adm-orderType');
+  const admOrderTypeEl=$adm('adm-orderType');
   const admIsExpress=admOrderTypeEl&&admOrderTypeEl.value==='express';
   const admExpMult=admIsExpress?(DB.expressMultiplier||1.75):1;
   const admBaseGrand=wT+spT+bdT+trT;
   const admExpressCharge=admIsExpress?parseFloat((admBaseGrand*(admExpMult-1)).toFixed(2)):0;
   const grand=parseFloat((admBaseGrand*admExpMult).toFixed(2));
-  const admExpBadge=document.getElementById('adm-expressBadge');
+  const admExpBadge=$adm('adm-expressBadge');
   if(admExpBadge){admExpBadge.style.display=admIsExpress?'block':'none';admExpBadge.textContent='⚡ Express surcharge: +GH₵'+admExpressCharge.toFixed(2)+' (×'+admExpMult+')';}
   if(admOrderTypeEl)admOrderTypeEl.style.border=admIsExpress?'2px solid #f0a500':'2px solid transparent';
   // Discounts
@@ -5855,31 +5855,31 @@ function admLiveCalc(){
   else if(promoP>0){discP=promoP;discA=parseFloat((grand*promoP/100).toFixed(2));discLbl='🎟️ '+(activePromo?.code||'');}
   else{discP=loyP;discA=parseFloat((grand*loyP/100).toFixed(2));discLbl='⭐ '+loyP+'% loyalty';}
   const grandFinal=grand-discA;
-  const ps=document.getElementById('adm-payStatus')?.value||'unpaid';
-  const dep=ps==='partial'?parseFloat(document.getElementById('adm-depositAmt')?.value)||0:ps==='paid'?grandFinal:0;
+  const ps=$adm('adm-payStatus')?.value||'unpaid';
+  const dep=ps==='partial'?parseFloat($adm('adm-depositAmt')?.value)||0:ps==='paid'?grandFinal:0;
   const bal=Math.max(0,grandFinal-dep);
   // Update badges
-  const sb=id=>document.getElementById('adm-sb-'+id);
+  const sb=id=>$adm('adm-sb-'+id);
   if(sb('weight'))sb('weight').textContent='GH₵ '+wT.toFixed(2);
   if(sb('special'))sb('special').textContent='GH₵ '+spT.toFixed(2);
   if(sb('bedding'))sb('bedding').textContent='GH₵ '+bdT.toFixed(2);
   if(sb('treat'))sb('treat').textContent='GH₵ '+trT.toFixed(2);
   // Total bar
-  const tb=id=>document.getElementById('adm-tb-'+id);
+  const tb=id=>$adm('adm-tb-'+id);
   if(tb('w'))tb('w').textContent='GH₵'+wT.toFixed(2);
   if(tb('s'))tb('s').textContent='GH₵'+spT.toFixed(2);
   if(tb('b'))tb('b').textContent='GH₵'+bdT.toFixed(2);
   if(tb('t'))tb('t').textContent='GH₵'+trT.toFixed(2);
-  const dw=document.getElementById('adm-tb-disc-wrap');
-  const lb=document.getElementById('adm-loyalty-badge');
-  const dc=document.getElementById('adm-tb-disc');
+  const dw=$adm('adm-tb-disc-wrap');
+  const lb=$adm('adm-loyalty-badge');
+  const dc=$adm('adm-tb-disc');
   if(discA>0&&dw){dw.style.display='block';if(lb)lb.textContent=discLbl;if(dc)dc.textContent='-GH₵'+discA.toFixed(2);}
   else if(dw)dw.style.display='none';
-  const bw=document.getElementById('adm-tb-bal-wrap');
-  const bt=document.getElementById('adm-tb-bal');
+  const bw=$adm('adm-tb-bal-wrap');
+  const bt=$adm('adm-tb-bal');
   if(bal>0&&bw){bw.style.display='block';if(bt)bt.textContent='GH₵'+bal.toFixed(2);}
   else if(bw)bw.style.display='none';
-  const gd=document.getElementById('adm-grandDisplay');
+  const gd=$adm('adm-grandDisplay');
   if(gd)gd.textContent='GH₵ '+grandFinal.toFixed(2);
 }
 function admCollectItems(){
@@ -7473,16 +7473,72 @@ function renderSupQuote(){
 // ── SUPERVISOR NEW ORDER ──────────────────────────────
 function renderSupNewOrder(){
   const pg=document.getElementById('sup-neworder');if(!pg)return;
-  if(pg.innerHTML.trim()) return;
-  // Reuse admin order form
-  const adminNO=document.getElementById('ap-neworder');
-  if(adminNO) pg.innerHTML=adminNO.innerHTML;
-  try{
-    const ab=document.getElementById('adminOrderBranch');
-    if(ab) ab.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-    clearAdminCust();
+  // Build a proper new order form for supervisor
+  // Reuse the manager new order render (already working correctly)
+  const mgrPg=document.getElementById('mgr-neworder');
+  if(mgrPg&&mgrPg.innerHTML.trim()){
+    // Manager form exists - clone it
+    pg.innerHTML=mgrPg.innerHTML;
+  } else {
+    // Trigger manager form build then copy
+    renderMgrNewOrder();
+    setTimeout(()=>{
+      const mPg=document.getElementById('mgr-neworder');
+      if(mPg) pg.innerHTML=mPg.innerHTML;
+      supInitNewOrder();
+    },200);
+    return;
+  }
+  supInitNewOrder();
+}
+
+function supInitNewOrder(){
+  const pg=document.getElementById('sup-neworder');if(!pg)return;
+  // Populate branch select scoped to supervisor's branch
+  const branch=CU?._loginBranch||'all';
+  const seesAll=branch==='all';
+  const ab=pg.querySelector('#adminOrderBranch');
+  if(ab){
+    ab.innerHTML=seesAll
+      ?DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('')
+      :'<option value="'+branch+'">'+branchName(branch)+'</option>';
+    if(CU)CU._loginBranch=ab.value;
+  }
+  // Wire customer search to use scoped search within sup-neworder
+  const cs=pg.querySelector('#adminCustSearch');
+  if(cs){
+    cs.oninput=function(){supCustSearch(this.value);};
+    cs.value='';
+  }
+  // Clear customer and init form
+  clearAdminCust();
+  const wr=pg.querySelector('#adm-weightRows');
+  if(!wr||wr.children.length===0){
     setTimeout(()=>admInitOrderForm(),100);
-  }catch(e){}
+  }
+  // Wire customer dropdown in sup-neworder
+  const dd=pg.querySelector('#adminCustDropdown');
+  if(dd) dd.style.position='absolute';
+}
+
+function supCustSearch(q){
+  // Search customers and show dropdown within sup-neworder page
+  const pg=document.getElementById('sup-neworder');if(!pg)return;
+  const dd=pg.querySelector('#adminCustDropdown');
+  if(!dd)return;
+  if(!q||q.length<1){dd.style.display='none';return;}
+  const matches=DB.customers.filter(c=>
+    (c.name||'').toLowerCase().includes(q.toLowerCase())||
+    (c.phone||'').includes(q)
+  ).slice(0,8);
+  if(!matches.length){dd.style.display='none';return;}
+  dd.style.display='block';
+  dd.innerHTML=matches.map(c=>
+    '<div class="cust-opt" onclick="selectAdminCust('+JSON.stringify(c.id)+')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);">'
+    +'<strong>'+c.name+'</strong> <span style="color:var(--muted);font-size:.8rem;">'+( c.phone||'')+'</span>'
+    +(c.notes?'<div style="font-size:.72rem;color:#b36b00;">📌 '+c.notes+'</div>':'')
+    +'</div>'
+  ).join('');
 }
 
 // ── SUPERVISOR RIDERS ─────────────────────────────────
@@ -7513,6 +7569,20 @@ function renderSupTrips(){
     +'<td>GH₵'+(t.fee||0).toFixed(2)+'</td>'
     +'<td><span class="badge badge-'+(t.status==='completed'?'collected':'pending')+'">'+(t.status||'pending')+'</span></td>'
     +'</tr>').join('');
+}
+
+
+// ── ORDER FORM CONTEXT HELPER ──────────────────────────
+// Finds an adm- element in the currently VISIBLE app
+function $adm(id){
+  const activeApps=['supervisorApp','managerApp','adminApp'];
+  for(const appId of activeApps){
+    const app=document.getElementById(appId);
+    if(!app||!app.classList.contains('active')) continue;
+    const el=app.querySelector('#'+id);
+    if(el) return el;
+  }
+  return document.getElementById(id);
 }
 
 // ── INIT ──
