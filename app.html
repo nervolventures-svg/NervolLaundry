@@ -7635,7 +7635,25 @@ function renderDebtTracker(){
     const last=orders[0]?.createdAt;
     return{...c,debtOrders:orders.length,debtTotal:total,lastOrder:last};
   }).sort((a,b)=>b.debtTotal-a.debtTotal);
-  if(!debtors.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="ei">💳</div><p>No outstanding balances.</p></div></td></tr>';return;}
+  // ── DEBT SUMMARY ──
+  const allDebtOrders=DB.orders.filter(o=>(o.balanceDue||0)>0);
+  const totalDebt=allDebtOrders.reduce((s,o)=>s+(o.balanceDue||0),0);
+  const totalDebtors=new Set(allDebtOrders.map(o=>o.customerId)).size;
+  const overdueDebt=allDebtOrders.filter(o=>isOverdue&&isOverdue(o)).reduce((s,o)=>s+(o.balanceDue||0),0);
+  const sumEl=document.getElementById('debtSummary');
+  if(sumEl){
+    sumEl.innerHTML=
+      '<div class="stat-card" style="padding:8px 16px;min-width:130px;text-align:center;background:var(--accent2-l);border:1px solid var(--accent2);">'
+      +'<div style="font-size:1.1rem;font-weight:800;color:var(--accent2);">GH₵'+totalDebt.toFixed(2)+'</div>'
+      +'<div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Total Outstanding</div></div>'
+      +'<div class="stat-card" style="padding:8px 16px;min-width:90px;text-align:center;">'
+      +'<div style="font-size:1.1rem;font-weight:800;color:var(--accent2);">'+totalDebtors+'</div>'
+      +'<div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Debtors</div></div>'
+      +(overdueDebt>0?'<div class="stat-card" style="padding:8px 16px;min-width:120px;text-align:center;background:#fff3cd;border:1px solid #f0a500;">'
+      +'<div style="font-size:1.1rem;font-weight:800;color:#b36b00;">GH₵'+overdueDebt.toFixed(2)+'</div>'
+      +'<div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Overdue</div></div>':'');
+  }
+    if(!debtors.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="ei">💳</div><p>No outstanding balances.</p></div></td></tr>';return;}
   tbody.innerHTML=debtors.map(c=>`<tr>
     <td><strong>${c.name}</strong></td>
     <td>${c.phone||'—'}</td>
