@@ -5586,7 +5586,7 @@ function adminOrderBranchChange(){
 
 
 function adminSearchCust(q){
-  const res=document.getElementById('adminCustResults');
+  const res=$adm('adminCustResults');
   if(!res)return;
   if(!q.trim()){res.innerHTML='';return;}
   const matches=DB.customers.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||(c.phone||'').includes(q));
@@ -5597,20 +5597,20 @@ function adminSearchCust(q){
 function selectAdminCust(id){
   const c=DB.customers.find(x=>x.id===id);if(!c)return;
   selCust=c;
-  const sel=document.getElementById('adminCustSelected');
+  const sel=$adm('adminCustSelected');
   if(sel)sel.style.display='flex';
   const nm=document.getElementById('adminCustName');
   if(nm)nm.textContent=c.name;
   const mt=document.getElementById('adminCustMeta');
   if(mt)mt.textContent=c.phone+(c.address?' · '+c.address:'');
-  const srch=document.getElementById('adminCustSearch');
+  const srch=$adm('adminCustSearch');
   if(srch)srch.value='';
-  const res=document.getElementById('adminCustResults');
+  const res=$adm('adminCustResults');
   if(res)res.innerHTML='';
   liveCalc(); // recalc with loyalty
   // Show customer notes if any
   if(c.notes){
-    const el=document.getElementById('adminCustSelected');
+    const el=$adm('adminCustSelected');
     if(el){
       const noteEl=el.querySelector('.cust-note');
       if(!noteEl){
@@ -5626,11 +5626,11 @@ function selectAdminCust(id){
 }
 function clearAdminCust(){
   selCust=null;
-  const sel=document.getElementById('adminCustSelected');
+  const sel=$adm('adminCustSelected');
   if(sel)sel.style.display='none';
-  const srch=document.getElementById('adminCustSearch');
+  const srch=$adm('adminCustSearch');
   if(srch)srch.value='';
-  const res=document.getElementById('adminCustResults');
+  const res=$adm('adminCustResults');
   if(res)res.innerHTML='';
 }
 function adminCreateAndSelect(name){
@@ -7510,34 +7510,45 @@ function supInitNewOrder(){
     cs.oninput=function(){supCustSearch(this.value);};
     cs.value='';
   }
-  // Clear customer and init form
-  clearAdminCust();
+  // Wire new customer button
+  const nc=pg.querySelector('[onclick*="adminCreateAndSelect"]');
+  // Clear customer selection display
+  const selDiv=pg.querySelector('#adminCustSelected');
+  if(selDiv) selDiv.innerHTML='';
+  const hiddenId=pg.querySelector('#adminSelectedCustId');
+  if(hiddenId) hiddenId.value='';
+  selCust=null;
+  // Clear results
+  const res=pg.querySelector('#adminCustResults');
+  if(res) res.innerHTML='';
+  // Init form items
   const wr=pg.querySelector('#adm-weightRows');
   if(!wr||wr.children.length===0){
-    setTimeout(()=>admInitOrderForm(),100);
+    setTimeout(()=>{admInitOrderForm();admLiveCalc();},150);
   }
-  // Wire customer dropdown in sup-neworder
-  const dd=pg.querySelector('#adminCustDropdown');
-  if(dd) dd.style.position='absolute';
 }
 
 function supCustSearch(q){
-  // Search customers and show dropdown within sup-neworder page
+  // Search customers in supervisor's new order form
+  // Use the correct ID: adminCustResults (not adminCustDropdown)
   const pg=document.getElementById('sup-neworder');if(!pg)return;
-  const dd=pg.querySelector('#adminCustDropdown');
-  if(!dd)return;
-  if(!q||q.length<1){dd.style.display='none';return;}
+  const dd=pg.querySelector('#adminCustResults');
+  if(!dd){
+    // Fallback: try any results container in this page
+    console.warn('supCustSearch: adminCustResults not found in sup-neworder');
+    return;
+  }
+  if(!q||q.length<1){dd.innerHTML='';return;}
   const matches=DB.customers.filter(c=>
     (c.name||'').toLowerCase().includes(q.toLowerCase())||
     (c.phone||'').includes(q)
-  ).slice(0,8);
-  if(!matches.length){dd.style.display='none';return;}
-  dd.style.display='block';
+  ).slice(0,6);
+  if(!matches.length){dd.innerHTML='';return;}
   dd.innerHTML=matches.map(c=>
-    '<div class="cust-opt" onclick="selectAdminCust('+JSON.stringify(c.id)+')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);">'
-    +'<strong>'+c.name+'</strong> <span style="color:var(--muted);font-size:.8rem;">'+( c.phone||'')+'</span>'
-    +(c.notes?'<div style="font-size:.72rem;color:#b36b00;">📌 '+c.notes+'</div>':'')
-    +'</div>'
+    '<div class="cust-opt" onclick="selectAdminCust('+JSON.stringify(c.id)+')">'+
+    c.name+' <span style="color:var(--muted);font-size:.8rem;">'+(c.phone||'')+'</span>'+
+    (c.notes?'<div style="font-size:.72rem;color:#b36b00;">📌 '+c.notes+'</div>':'')+
+    '</div>'
   ).join('');
 }
 
