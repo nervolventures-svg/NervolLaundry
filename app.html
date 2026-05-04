@@ -4549,7 +4549,7 @@ function showAPage(page,el){
       const _expDate=new Date().toISOString().split('T')[0];
       const _ed=document.getElementById('expDate');if(_ed&&!_ed.value)_ed.value=_expDate;
     }catch(e){}}
-    if(page==='reports'){try{renderReports();}catch(e){}}
+    if(page==='reports'){/* user clicks Generate button to run genReport() */}
     if(page==='riders'){try{renderRiders();}catch(e){}}
     if(page==='branches'){try{renderBranches();}catch(e){}}
     if(page==='staff'){try{renderStaff();}catch(e){}}
@@ -5017,7 +5017,14 @@ function genReport(){
   const bf=document.getElementById('rptBranch').value;
   const orders=DB.orders.filter(o=>{const d=new Date(o.createdAt);return d>=from&&d<=to&&(bf==='all'||o.branchId===bf);});
   const exps=DB.expenditures.filter(e=>{const d=new Date(e.date+'T00:00:00');return d>=from&&d<=to&&(bf==='all'||e.branchId===bf);});
-  const tRev=orders.reduce((s,o)=>s+o.total,0);
+  const rptOtherRevs=(DB.revenues||[]).filter(r=>{
+    const rd=new Date((r.date||r.createdAt||'').slice(0,10)+'T12:00:00');
+    const inDate=rd>=from&&rd<=to;
+    const inBranch=bf==='all'||r.branchId===bf;
+    return inDate&&inBranch;
+  });
+  const tOtherRev=rptOtherRevs.reduce((s,r)=>s+r.amount,0);
+  const tRev=orders.reduce((s,o)=>s+o.total,0)+tOtherRev;
   const tExp=exps.reduce((s,e)=>s+e.amount,0);
   const profit=tRev-tExp;
   const byBranch={};
@@ -5351,9 +5358,12 @@ function renderMonthlyPL(){
   function calc(f,t){
     const orders=DB.orders.filter(o=>{const d=new Date(o.createdAt);return d>=f&&d<=t;});
     const exps=DB.expenditures.filter(e=>{const d=new Date(e.date+'T00:00:00');return d>=f&&d<=t;});
-    const rev=orders.reduce((s,o)=>s+o.total,0);
+    const otherRevs=(DB.revenues||[]).filter(r=>{const d=new Date((r.date||r.createdAt||'').slice(0,10)+'T12:00:00');return d>=f&&d<=t;});
+    const orderRev=orders.reduce((s,o)=>s+o.total,0);
+    const otherRev=otherRevs.reduce((s,r)=>s+r.amount,0);
+    const rev=orderRev+otherRev;
     const exp=exps.reduce((s,e)=>s+e.amount,0);
-    return{rev,exp,profit:rev-exp,orders:orders.length};
+    return{rev,exp,profit:rev-exp,orders:orders.length,otherRev};
   }
   const cur=calc(from,to), prev=calc(lFrom,lTo);
 
@@ -5383,7 +5393,8 @@ function renderMonthlyPL(){
 function renderBranchComparison(){
   const rows=DB.branches.filter(b=>b.active).map(b=>{
     const orders=DB.orders.filter(o=>o.branchId===b.id);
-    const rev=orders.reduce((s,o)=>s+o.total,0);
+    const brOtherRev=(DB.revenues||[]).filter(r=>r.branchId===b.id).reduce((s,r)=>s+r.amount,0);
+    const rev=orders.reduce((s,o)=>s+o.total,0)+brOtherRev;
     const avg=orders.length?rev/orders.length:0;
     const unpaid=orders.filter(o=>o.payStatus==='unpaid'||o.payStatus==='partial');
     const unpaidVal=unpaid.reduce((s,o)=>s+o.balanceDue,0);
