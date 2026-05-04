@@ -1286,6 +1286,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-sep"></div>
       <div class="a-nav-item" onclick="showMgrPage('pricing',this)"><span class="ic">💰</span> Pricing</div>
       <div class="a-nav-item" onclick="showMgrPage('expenditure',this)"><span class="ic">💸</span> Expenditure</div>
+      <div class="a-nav-item" onclick="showMgrPage('revenues',this)"><span class="ic">💰</span> Other Revenue</div>
       <div class="a-nav-item" onclick="showMgrPage('reports',this)"><span class="ic">📈</span> Reports</div>
       <div class="a-nav-item" onclick="showMgrPage('analytics',this)"><span class="ic">🧠</span> Analytics</div>
       <div class="a-nav-item" onclick="showMgrPage('plreport',this)"><span class="ic">📑</span> P&amp;L Report</div>
@@ -1365,6 +1366,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-page" id="mgr-expenditure"></div>
       <div class="a-page" id="mgr-reports"></div>
       <div class="a-page" id="mgr-analytics"></div>
+      <div class="a-page" id="mgr-revenues"></div>
       <div class="a-page" id="mgr-debttracker"></div>
       <div class="a-page" id="mgr-promos"></div>
       <div class="a-page" id="mgr-pettycash"></div>
@@ -1394,6 +1396,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-sep"></div>
       <div class="a-nav-item" onclick="showAPage('pricing',this)"><span class="ic">💰</span> Pricing</div>
       <div class="a-nav-item" onclick="showAPage('expenditure',this)"><span class="ic">💸</span> Expenditure</div>
+      <div class="a-nav-item" onclick="showAPage('revenues',this)"><span class="ic">💰</span> Other Revenue</div>
       <div class="a-nav-item" onclick="showAPage('reports',this)"><span class="ic">📈</span> Reports</div>
       <div class="a-nav-sep"></div>
       <div class="a-nav-item" onclick="showAPage('analytics',this)"><span class="ic">🧠</span> Analytics</div>
@@ -1975,6 +1978,49 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       </div>
 
       <!-- DEBT TRACKER -->
+      <div class="a-page" id="ap-revenues">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title">💰 Log Other Revenue</div>
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Record income not captured through laundry orders — cleaning service payments, cash collections, deposits, etc.</p>
+          <div class="form-grid">
+            <div class="fg"><label>Branch</label><select id="revBranch"></select></div>
+            <div class="fg"><label>Revenue Type</label>
+              <select id="revType">
+                <option value="Cleaning Service">Cleaning Service</option>
+                <option value="Cash Collection">Cash Collection</option>
+                <option value="Advance / Deposit">Advance / Deposit</option>
+                <option value="Rider Fee Collected">Rider Fee Collected</option>
+                <option value="Debt Recovery">Debt Recovery</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="fg"><label>Amount (GH₵) *</label><input type="number" id="revAmt" min="0" step="0.50" placeholder="0.00"></div>
+            <div class="fg"><label>Date</label><input type="date" id="revDate"></div>
+          </div>
+          <div class="fg" style="margin-bottom:14px;">
+            <label>Comment / Description *</label>
+            <textarea id="revComment" placeholder="e.g. Cleaning service for Asante household — 3 bedrooms, 01 May 2026" rows="3"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="logRevenue()">💰 Log Revenue</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <div class="card-title" style="margin:0;">📋 Revenue Log</div>
+            <div id="revSummary"></div>
+          </div>
+          <div class="tbl-wrap"><table class="tbl">
+            <thead><tr>
+              <th class="sortable" data-col="date" onclick="sortBy('revBody','date',renderRevenues)">Date</th>
+              <th>Branch</th><th>Type</th><th>Comment</th>
+              <th class="sortable" data-col="amount" onclick="sortBy('revBody','amount',renderRevenues)">Amount</th>
+              <th>By</th><th>Del</th>
+            </tr></thead>
+            <tbody id="revBody"></tbody>
+          </table></div>
+        </div>
+      </div>
       <div class="a-page" id="ap-debttracker">
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -2162,6 +2208,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-item" onclick="showSupPage('neworder',this)"><span class="ic">➕</span> <strong>New Order</strong></div>
       <div class="a-nav-item" onclick="showSupPage('customers',this)"><span class="ic">👤</span> Customers</div>
       <div class="a-nav-item" onclick="showSupPage('expenditure',this)"><span class="ic">💸</span> Expenditure</div>
+      <div class="a-nav-item" onclick="showSupPage('revenues',this)"><span class="ic">💰</span> Other Revenue</div>
       <div class="a-nav-item" onclick="showSupPage('complaints',this)"><span class="ic">⚠️</span> Complaints</div>
       <div class="a-nav-item" onclick="showSupPage('shift',this)"><span class="ic">🔄</span> Shift Handover</div>
       <div class="a-nav-item" onclick="showSupPage('quote',this)"><span class="ic">💬</span> Quote</div>
@@ -2346,6 +2393,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
       <!-- SUP QUOTE -->
       <div class="a-page" id="sup-quote"></div>
+
+      <!-- SUP REVENUES -->
+      <div class="a-page" id="sup-revenues"></div>
 
       <!-- SUP RIDERS -->
       <div class="a-page" id="sup-riders">
@@ -2670,6 +2720,7 @@ const COLL = {
   branches:     'branches',
   users:        'users',
   settings:     'settings',  // pricing, loyalty, supplies, nextOrderNum
+  revenues:     'revenues',  // other/non-order revenue entries
 };
 
 // ── INIT FIREBASE ──
@@ -2746,6 +2797,7 @@ async function saveSettings(){
       floats:DB.floats||[],
       quotes:DB.quotes||[],
       momoLogs:DB.momoLogs||[],
+      revenues:DB.revenues||[],
       updatedAt:new Date().toISOString()
     });
   }catch(e){console.error('saveSettings:',e);}
@@ -2808,6 +2860,23 @@ async function saveExpenditure(exp){
   } catch(e) { console.error('saveExpenditure:', e); localSave(); }
 }
 
+async function saveRevenue(rev){
+  if(!DB.revenues) DB.revenues=[];
+  if(!DB.revenues.find(r=>r.id===rev.id)) DB.revenues.push(rev);
+  saveSettings();
+  if(!fbReady) return;
+  const {doc,setDoc,db}=window._fb;
+  try{ await setDoc(doc(db,COLL.revenues,rev.id),rev); }
+  catch(e){ console.error('saveRevenue:',e); }
+}
+async function deleteRevenueFB(id){
+  DB.revenues=(DB.revenues||[]).filter(r=>r.id!==id);
+  saveSettings();
+  if(!fbReady) return;
+  const {doc,deleteDoc,db}=window._fb;
+  try{ await deleteDoc(doc(db,COLL.revenues,id)); }
+  catch(e){ console.error('deleteRevenue:',e); }
+}
 async function deleteExpFB(id){
   if(!fbReady) return;
   const {doc, deleteDoc, db} = window._fb;
@@ -4185,9 +4254,16 @@ function confirmCollection(){
   o.status='collected';o.collectedBy=collector;o.collectedAt=new Date().toISOString();
   o.collectionNotes=document.getElementById('sm-collect-notes').value.trim();
   saveOrder(o);
-  closeModal('statusModal');renderBoard();checkOverdue();
-  if(typeof renderAOrders==='function')renderAOrders();
-  if(typeof renderDashboard==='function')renderDashboard();
+  closeModal('statusModal');
+  try{renderBoard();}catch(e){}
+  checkOverdue();
+  try{if(typeof renderAOrders==='function')renderAOrders();}catch(e){}
+  try{if(typeof renderDashboard==='function')renderDashboard();}catch(e){}
+  try{if(typeof renderSupOrders==='function')renderSupOrders();}catch(e){}
+  try{if(typeof renderSupDashboard==='function')renderSupDashboard();}catch(e){}
+  try{if(typeof renderMgrOrders==='function')renderMgrOrders();}catch(e){}
+  try{if(typeof renderMgrDashboard==='function')renderMgrDashboard();}catch(e){}
+  auditLog('collected','Order '+o.id+' collected by '+(o.collectedBy||'?'),o.id);
   offerStatusNotification(o,'collected');
   showNotif('Order '+o.id+' marked as collected ✅','ok');
 }
@@ -4443,7 +4519,13 @@ function showAPage(page,el){
     if(page==='float'){renderFloat();const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='turnaround'){const today=new Date().toISOString().split('T')[0];const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}if(to&&!to.value)to.value=today;renderTurnaround();}
     if(page==='pricing'){try{renderPricingPanel();}catch(e){}}
-    if(page==='expenditure'){try{renderExpBody();const d=new Date().toISOString().split('T')[0];const ed=document.getElementById('expDate');if(ed&&!ed.value)ed.value=d;}catch(e){}}
+    if(page==='expenditure'){try{
+      const expB=document.getElementById('expBranch');
+      if(expB&&!expB.options.length) expB.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+      renderExpBody();
+      const _expDate=new Date().toISOString().split('T')[0];
+      const _ed=document.getElementById('expDate');if(_ed&&!_ed.value)_ed.value=_expDate;
+    }catch(e){}}
     if(page==='reports'){try{renderReports();}catch(e){}}
     if(page==='riders'){try{renderRiders();}catch(e){}}
     if(page==='branches'){try{renderBranches();}catch(e){}}
@@ -4455,6 +4537,7 @@ function showAPage(page,el){
     }
     if(page==='ridertrips'){renderRiderTrips();const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');}
     if(page==='approvals')renderApprovals();
+    if(page==='revenues'){const _rb=document.getElementById('revBranch');if(_rb&&!_rb.options.length)initRevenuePage('ap-revenues');renderRevenues();}
     if(page==='auditlog'){try{renderAuditLog();}catch(e){}}
   }catch(e){console.error('showAPage:',page,e);}
 }
@@ -5136,7 +5219,12 @@ function orderSum(o){
 }
 function fmtDate(iso){return new Date(iso).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
 function fmtDateShort(iso){return new Date(iso).toLocaleDateString('en-GH',{day:'2-digit',month:'short',year:'numeric'});}
-function openModal(id){document.getElementById(id).style.display='flex';}
+function openModal(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.style.display='flex';
+  el.style.zIndex='9999'; // ensure above all app layers
+}
 function closeModal(id){document.getElementById(id).style.display='none';}
 function showNotif(msg,type='ok'){
   const n=document.getElementById('notif');
@@ -6056,7 +6144,11 @@ function showMgrPage(page, el){
     if(page==='orders')renderAOrders();
     else if(page==='customers')renderCustomers();
     else if(page==='pricing'){renderPricingPanel();updateExpressMultDisplay();}
-    else if(page==='expenditure')renderExpBody();
+    else if(page==='expenditure'){
+      const expB=document.getElementById('expBranch');
+      if(expB&&!expB.options.length) expB.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+      try{renderExpBody();}catch(e){}
+    }
     else if(page==='reports'){try{renderReports();}catch(e){}}
     else if(page==='analytics'){try{initAnalyticsFilters();renderAnalytics();}catch(e){}}
     else if(page==='debttracker')renderDebtTracker();
@@ -6086,6 +6178,7 @@ function showMgrPage(page, el){
       const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
     }
     else if(page==='approvals')renderApprovals();
+    else if(page==='revenues'){renderRevenuesPage('mgr-revenues');}
     else if(page==='supplies')renderSupplies();
   }
 }
@@ -7191,6 +7284,7 @@ function showSupPage(page,el){
   if(page==='complaints'){supInitForms();renderSupComplaints();}
   if(page==='shift') renderSupShift();
   if(page==='quote') renderSupQuote();
+  if(page==='revenues'){renderRevenuesPage('sup-revenues');}
   if(page==='riders') renderSupRiders();
   if(page==='ridertrips') renderSupTrips();
   }catch(e){console.error('showSupPage:',page,e);}
@@ -7594,6 +7688,118 @@ function $adm(id){
     if(el) return el;
   }
   return document.getElementById(id);
+}
+
+
+// ══════════════════════════════════════════════════════
+// OTHER REVENUE MODULE
+// ══════════════════════════════════════════════════════
+function initRevenuePage(containerId){
+  // Populate branch select
+  const br=document.getElementById('revBranch')||document.querySelector('#'+containerId+' #revBranch');
+  if(br){
+    const canSeeAll=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager'||CU.role==='supervisor');
+    const branch=CU?._loginBranch||'all';
+    if(canSeeAll||branch==='all'){
+      br.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+    } else {
+      br.innerHTML='<option value="'+branch+'">'+branchName(branch)+'</option>';
+    }
+  }
+  // Set today's date
+  const dt=document.getElementById('revDate')||document.querySelector('#'+containerId+' #revDate');
+  if(dt&&!dt.value) dt.value=new Date().toISOString().split('T')[0];
+  renderRevenues();
+}
+
+function logRevenue(){
+  if(!CU){showNotif('Not logged in.','err');return;}
+  const branchEl=document.getElementById('revBranch');
+  const typeEl=document.getElementById('revType');
+  const amtEl=document.getElementById('revAmt');
+  const dateEl=document.getElementById('revDate');
+  const commentEl=document.getElementById('revComment');
+  const branch=branchEl?.value||CU._loginBranch||'all';
+  const type=typeEl?.value||'Other';
+  const amt=parseFloat(amtEl?.value||0);
+  const date=dateEl?.value||new Date().toISOString().split('T')[0];
+  const comment=(commentEl?.value||'').trim();
+  if(!comment){showNotif('Please enter a description/comment.','err');return;}
+  if(!amt||amt<=0){showNotif('Please enter a valid amount.','err');return;}
+  const rev={
+    id:'rev'+Date.now(),
+    branchId:branch,
+    type,
+    comment,
+    amount:amt,
+    date,
+    loggedBy:CU.name,
+    role:CU.roleLabel||CU.role,
+    createdAt:new Date().toISOString()
+  };
+  if(!DB.revenues) DB.revenues=[];
+  DB.revenues.push(rev);
+  saveRevenue(rev);
+  auditLog('revenue-logged',type+' GH₵'+amt.toFixed(2)+' — '+comment,rev.id);
+  renderRevenues();
+  showNotif('Revenue logged ✅','ok');
+  if(amtEl) amtEl.value='';
+  if(commentEl) commentEl.value='';
+}
+
+function renderRevenues(){
+  const tbody=document.getElementById('revBody');if(!tbody)return;
+  const revs=(DB.revenues||[]);
+  // Summary
+  const total=revs.reduce((s,r)=>s+r.amount,0);
+  const thisMonth=revs.filter(r=>r.createdAt&&r.createdAt.slice(0,7)===new Date().toISOString().slice(0,7));
+  const monthTotal=thisMonth.reduce((s,r)=>s+r.amount,0);
+  const sumEl=document.getElementById('revSummary');
+  if(sumEl) sumEl.innerHTML=
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    +'<div class="stat-card" style="padding:7px 14px;text-align:center;">'
+    +'<div style="font-size:1rem;font-weight:800;color:var(--accent);">GH₵'+total.toFixed(2)+'</div>'
+    +'<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;">All Time</div></div>'
+    +'<div class="stat-card" style="padding:7px 14px;text-align:center;">'
+    +'<div style="font-size:1rem;font-weight:800;color:var(--accent);">GH₵'+monthTotal.toFixed(2)+'</div>'
+    +'<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;">This Month</div></div>'
+    +'</div>';
+  // Sort and render
+  const getters={date:r=>r.createdAt,amount:r=>r.amount};
+  const sorted=sortData([...revs],'revBody',getters).reverse();
+  setTimeout(()=>applySortHeaders('revBody'),50);
+  if(!sorted.length){
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="ei">💰</div><p>No revenue entries yet.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=sorted.map(r=>'<tr>'
+    +'<td style="font-size:.76rem;">'+r.date+'</td>'
+    +'<td style="font-size:.76rem;">'+branchName(r.branchId)+'</td>'
+    +'<td><span class="badge badge-washing" style="font-size:.7rem;">'+r.type+'</span></td>'
+    +'<td style="font-size:.82rem;max-width:200px;">'+r.comment+'</td>'
+    +'<td><strong style="color:var(--accent);">GH₵'+r.amount.toFixed(2)+'</strong></td>'
+    +'<td style="font-size:.74rem;">'+r.loggedBy+'</td>'
+    +'<td><button class="btn btn-xs btn-danger" onclick="deleteRevenue('+JSON.stringify(r.id)+')">Del</button></td>'
+    +'</tr>').join('');
+}
+
+function deleteRevenue(id){
+  const canDel=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager');
+  if(!canDel){showNotif('Only Admin/Manager can delete revenue entries.','err');return;}
+  if(!confirm('Delete this revenue entry?'))return;
+  deleteRevenueFB(id);
+  renderRevenues();
+  showNotif('Deleted.','ok');
+}
+
+function renderRevenuesPage(pgId){
+  const pg=document.getElementById(pgId);if(!pg)return;
+  // For manager/supervisor pages, clone the admin revenue page content
+  if(!pg.innerHTML.trim()){
+    const adminPg=document.getElementById('ap-revenues');
+    if(adminPg) pg.innerHTML=adminPg.innerHTML;
+  }
+  initRevenuePage(pgId);
 }
 
 // ── INIT ──
