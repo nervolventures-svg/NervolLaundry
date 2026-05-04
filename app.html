@@ -4573,7 +4573,8 @@ function renderDashboard(){
   const today=new Date().toDateString();
   const filtered=o=>bf==='all'||o.branchId===bf;
   const todayO=DB.orders.filter(o=>new Date(o.createdAt).toDateString()===today&&filtered(o));
-  const todayRev=todayO.reduce((s,o)=>s+o.total,0);
+  const todayOtherRev=(DB.revenues||[]).filter(r=>new Date(r.date||r.createdAt).toDateString()===today).reduce((s,r)=>s+r.amount,0);
+  const todayRev=todayO.reduce((s,o)=>s+o.total,0)+todayOtherRev;
   const todayExp=DB.expenditures.filter(e=>new Date(e.date+'T00:00:00').toDateString()===today&&(bf==='all'||e.branchId===bf)).reduce((s,e)=>s+e.amount,0);
   const active=DB.orders.filter(o=>['pending','washing','ready','delivery'].includes(o.status)&&filtered(o)).length;
   const overdue=DB.orders.filter(o=>isOverdue(o)&&filtered(o)).length;
@@ -6571,8 +6572,14 @@ function renderPLReport(){
   const exps=DB.expenditures.filter(filterExp);
   const petty=(DB.pettyCash||[]).filter(filterExp);
 
-  // Revenue
-  const grossRev=orders.reduce((s,o)=>s+o.total,0);
+  // Revenue — orders + other revenue entries
+  const otherRevs=(DB.revenues||[]).filter(r=>{
+    const rd=new Date((r.date||r.createdAt||'').slice(0,10)+'T12:00:00');
+    return rd>=from&&rd<=to;
+  });
+  const otherRevTotal=otherRevs.reduce((s,r)=>s+r.amount,0);
+  const orderRev=orders.reduce((s,o)=>s+o.total,0);
+  const grossRev=orderRev+otherRevTotal;
   const collected=orders.filter(o=>o.status==='collected').reduce((s,o)=>s+o.total,0);
   const uncollected=orders.filter(o=>o.status!=='collected'&&o.balanceDue>0).reduce((s,o)=>s+o.balanceDue,0);
   const deposits=orders.filter(o=>o.payStatus==='partial').reduce((s,o)=>s+(o.depositPaid||0),0);
