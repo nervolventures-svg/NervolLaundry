@@ -6575,7 +6575,9 @@ function renderPLReport(){
   // Revenue — orders + other revenue entries
   const otherRevs=(DB.revenues||[]).filter(r=>{
     const rd=new Date((r.date||r.createdAt||'').slice(0,10)+'T12:00:00');
-    return rd>=from&&rd<=to;
+    const inDate=rd>=from&&rd<=to;
+    const inBranch=branchId==='all'||r.branchId===branchId;
+    return inDate&&inBranch;
   });
   const otherRevTotal=otherRevs.reduce((s,r)=>s+r.amount,0);
   const orderRev=orders.reduce((s,o)=>s+o.total,0);
@@ -6598,7 +6600,8 @@ function renderPLReport(){
   const branches=branchId==='all'?DB.branches.filter(b=>b.active):[DB.branches.find(b=>b.id===branchId)].filter(Boolean);
   const branchRows=branches.map(b=>{
     const bOrders=orders.filter(o=>o.branchId===b.id);
-    const bRev=bOrders.reduce((s,o)=>s+o.total,0);
+    const bOtherRev=otherRevs.filter(r=>r.branchId===b.id).reduce((s,r)=>s+r.amount,0);
+    const bRev=bOrders.reduce((s,o)=>s+o.total,0)+bOtherRev;
     const bExp=exps.filter(e=>e.branchId===b.id).reduce((s,e)=>s+e.amount,0)+petty.filter(e=>e.branchId===b.id).reduce((s,e)=>s+e.amount,0);
     const bProfit=bRev-bExp;
     return'<tr><td>'+b.name+'</td><td>'+bOrders.length+'</td><td>GH₵'+bRev.toFixed(2)+'</td><td>GH₵'+bExp.toFixed(2)+'</td><td style="color:'+(bProfit>=0?'var(--accent)':'var(--accent2)')+'"><strong>GH₵'+bProfit.toFixed(2)+'</strong></td><td>'+(bRev>0?(bProfit/bRev*100).toFixed(1)+'%':'—')+'</td></tr>';
