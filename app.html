@@ -1457,9 +1457,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;"><button class="btn btn-secondary btn-sm" onclick="openDailySummary()">📊 Daily Summary</button><button class="btn btn-secondary btn-sm" onclick="exportOrdersCSV()">📥 Export CSV</button></div>
         <div id="supplyDashAlert" style="display:none;background:#fff3cd;border:1px solid #f0a500;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;"></div>
         <div class="stats-row">
-          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val green" id="d-rev">GH₵ 0</div><div class="stat-label">Today Revenue</div></div>
-          <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-val gold" id="d-orders">0</div><div class="stat-label">Today Orders</div></div>
-          <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-val red" id="d-exp">GH₵ 0</div><div class="stat-label">Today Expenses</div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val green" id="d-rev">GH₵ 0</div><div class="stat-label" id="d-rev-lbl">Today Revenue</div></div>
+          <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-val gold" id="d-orders">0</div><div class="stat-label" id="d-orders-lbl">Today Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-val red" id="d-exp">GH₵ 0</div><div class="stat-label" id="d-exp-lbl">Today Expenses</div></div>
           <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val blue" id="d-active">0</div><div class="stat-label">Active Orders</div></div>
           <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-val red" id="d-overdue">0</div><div class="stat-label">Overdue</div></div>
         </div>
@@ -4570,19 +4570,29 @@ function getBranchFilter(){return document.getElementById('aBranchFilter')?.valu
 // ── DASHBOARD ──
 function renderDashboard(){
   const bf=getBranchFilter();
-  const today=new Date().toDateString();
   const filtered=o=>bf==='all'||o.branchId===bf;
-  const todayO=DB.orders.filter(o=>new Date(o.createdAt).toDateString()===today&&filtered(o));
-  const todayOtherRev=(DB.revenues||[]).filter(r=>new Date(r.date||r.createdAt).toDateString()===today).reduce((s,r)=>s+r.amount,0);
-  const todayRev=todayO.reduce((s,o)=>s+o.total,0)+todayOtherRev;
-  const todayExp=DB.expenditures.filter(e=>new Date(e.date+'T00:00:00').toDateString()===today&&(bf==='all'||e.branchId===bf)).reduce((s,e)=>s+e.amount,0);
+  const{from,to}=getDashRange();
+  const periodO=DB.orders.filter(o=>{const d=new Date(o.createdAt);return d>=from&&d<=to&&filtered(o);});
+  const periodOtherRev=(DB.revenues||[]).filter(r=>{const d=new Date((r.date||r.createdAt||'').slice(0,10)+'T12:00:00');return d>=from&&d<=to&&(bf==='all'||r.branchId===bf);}).reduce((s,r)=>s+r.amount,0);
+  const periodRev=periodO.reduce((s,o)=>s+o.total,0)+periodOtherRev;
+  const periodExp=DB.expenditures.filter(e=>{const d=new Date(e.date+'T00:00:00');return d>=from&&d<=to&&(bf==='all'||e.branchId===bf);}).reduce((s,e)=>s+e.amount,0);
   const active=DB.orders.filter(o=>['pending','washing','ready','delivery'].includes(o.status)&&filtered(o)).length;
   const overdue=DB.orders.filter(o=>isOverdue(o)&&filtered(o)).length;
-  document.getElementById('d-rev').textContent=`GH₵${todayRev.toFixed(2)}`;
-  document.getElementById('d-orders').textContent=todayO.length;
-  document.getElementById('d-exp').textContent=`GH₵${todayExp.toFixed(2)}`;
-  document.getElementById('d-active').textContent=active;
-  document.getElementById('d-overdue').textContent=overdue;
+  // Update stat cards
+  const s=id=>document.getElementById(id);
+  if(s('d-rev')) s('d-rev').textContent='GH₵'+periodRev.toFixed(2);
+  if(s('d-orders')) s('d-orders').textContent=periodO.length;
+  if(s('d-exp')) s('d-exp').textContent='GH₵'+periodExp.toFixed(2);
+  if(s('d-active')) s('d-active').textContent=active;
+  if(s('d-overdue')) s('d-overdue').textContent=overdue;
+  // Update stat labels
+  const lbl=dashPeriodLabel();
+  const pfx=dashPeriod==='daily'?'Today':dashPeriod==='weekly'?'Week':dashPeriod==='monthly'?'Month':dashPeriod==='quarterly'?'Quarter':'Year';
+  if(s('d-rev-lbl')) s('d-rev-lbl').textContent=pfx+' Revenue';
+  if(s('d-orders-lbl')) s('d-orders-lbl').textContent=pfx+' Orders';
+  if(s('d-exp-lbl')) s('d-exp-lbl').textContent=pfx+' Expenses';
+  // Update period label
+  if(s('dashPeriodLabel')) s('dashPeriodLabel').textContent=lbl;
   renderWeekChart(bf);
   renderSvcChart(bf);
   renderStatusChart(bf);
@@ -6257,8 +6267,9 @@ function updateMgrApprovalsBadge(){
 
 // ─── MGR DASHBOARD ───────────────────────────────────
 function renderMgrDashboard(){
-  const today=new Date().toDateString();
-  const todayOrders=DB.orders.filter(o=>new Date(o.createdAt).toDateString()===today);
+  const{from,to}=getDashRange();
+  const periodOrders=DB.orders.filter(o=>{const d=new Date(o.createdAt);return d>=from&&d<=to;});
+  const todayOrders=periodOrders; // alias for compatibility
   const rev=todayOrders.filter(o=>o.payStatus==='paid'||o.payStatus==='partial').reduce((s,o)=>s+(o.payStatus==='paid'?o.total:(o.depositPaid||0)),0);
   const exp=DB.expenditures.filter(e=>new Date(e.createdAt).toDateString()===today).reduce((s,e)=>s+e.amount,0);
   const active=DB.orders.filter(o=>['pending','washing','ready'].includes(o.status)).length;
@@ -7380,12 +7391,13 @@ function renderSupDashboard(){
   const branch=_supBranch();
   const seesAll=branch==='all';
   const today=new Date().toDateString();
+  const{from:supFrom,to:supTo}=getDashRange();
   const branchOrders=seesAll?DB.orders:DB.orders.filter(o=>o.branchId===branch);
-  const todayOrders=branchOrders.filter(o=>new Date(o.createdAt).toDateString()===today);
+  const todayOrders=branchOrders.filter(o=>{const d=new Date(o.createdAt);return d>=supFrom&&d<=supTo;});
   const active=branchOrders.filter(o=>!['collected','cancelled'].includes(o.status));
   const overdue=branchOrders.filter(o=>isOverdue&&isOverdue(o));
   const openComps=(DB.complaints||[]).filter(c=>c.status!=='resolved'&&(seesAll||c.branchId===branch));
-  const todayExp=(DB.expenditures||[]).filter(e=>new Date(e.createdAt).toDateString()===today&&(seesAll||e.branchId===branch));
+  const todayExp=(DB.expenditures||[]).filter(e=>{const d=new Date(e.date+'T00:00:00');return d>=supFrom&&d<=supTo&&(seesAll||e.branchId===branch);});
   const ready=branchOrders.filter(o=>o.status==='ready');
 
   // Build recent orders rows safely
@@ -7406,8 +7418,7 @@ function renderSupDashboard(){
     +'<span>'+e.cat+' — '+e.desc+'</span><strong>GH₵'+e.amount.toFixed(2)+'</strong></div>').join('')
     ||'<p style="color:var(--muted);font-size:.8rem;">No expenses logged today.</p>';
 
-  pg.innerHTML='<div class="stats-row" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">'
-    +'<div class="stat-card" style="grid-column:span 2;background:var(--accent);color:#fff;border-radius:12px;">'
+  pg.innerHTML=buildDashToggle('renderSupDashboard')+'<div class="stats-row" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">'    +'<div class="stat-card" style="grid-column:span 2;background:var(--accent);color:#fff;border-radius:12px;">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
     +'<div><div style="font-size:2rem;font-weight:800;">'+todayOrders.length+'</div>'
     +'<div style="font-size:.7rem;opacity:.8;text-transform:uppercase;letter-spacing:1px;">Orders Today</div></div>'
@@ -7906,6 +7917,79 @@ document.addEventListener('click',function(e){
   const btn={adminApp:'adminMenuBtn',managerApp:'mgrMenuBtn',supervisorApp:'supMenuBtn'}[appId];
   if(btn) closeMobMenu(appId,btn);
 });
+
+
+// ── DASHBOARD PERIOD ─────────────────────────────────
+let dashPeriod='daily';
+
+function setDashPeriod(p, el){
+  dashPeriod=p;
+  // Update active button styling - only in the same parent container
+  if(el){
+    const container=el.closest('div');
+    if(container){container.querySelectorAll('.btn').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-ghost');});}
+    el.classList.remove('btn-ghost');el.classList.add('btn-primary');
+  }
+  // Refresh whichever dashboard is visible
+  const supApp=document.getElementById('supervisorApp');
+  const mgrApp=document.getElementById('managerApp');
+  const admApp=document.getElementById('adminApp');
+  if(supApp&&supApp.classList.contains('active')) try{renderSupDashboard();}catch(e){}
+  else if(mgrApp&&mgrApp.classList.contains('active')) try{renderMgrDashboard();}catch(e){}
+  else try{renderDashboard();}catch(e){}
+}
+
+function getDashRange(){
+  const now=new Date();
+  let from, to=new Date(now);
+  to.setHours(23,59,59,999);
+  switch(dashPeriod){
+    case 'daily':
+      from=new Date(now); from.setHours(0,0,0,0);
+      break;
+    case 'weekly':
+      from=new Date(now);
+      from.setDate(now.getDate()-now.getDay()); // Sunday
+      from.setHours(0,0,0,0);
+      break;
+    case 'monthly':
+      from=new Date(now.getFullYear(),now.getMonth(),1);
+      break;
+    case 'quarterly':
+      const q=Math.floor(now.getMonth()/3);
+      from=new Date(now.getFullYear(),q*3,1);
+      break;
+    case 'yearly':
+      from=new Date(now.getFullYear(),0,1);
+      break;
+    default:
+      from=new Date(now); from.setHours(0,0,0,0);
+  }
+  return{from,to};
+}
+
+function dashPeriodLabel(){
+  const now=new Date();
+  switch(dashPeriod){
+    case 'daily':    return 'Today — '+now.toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long'});
+    case 'weekly':   return 'This Week — Week of '+new Date(now.setDate(now.getDate()-now.getDay())).toLocaleDateString('en-GH',{day:'numeric',month:'short'});
+    case 'monthly':  return now.toLocaleDateString('en-GH',{month:'long',year:'numeric'});
+    case 'quarterly':return 'Q'+(Math.floor(new Date().getMonth()/3)+1)+' '+new Date().getFullYear();
+    case 'yearly':   return 'Year '+new Date().getFullYear();
+    default:         return '';
+  }
+}
+
+
+function buildDashToggle(renderFn){
+  const periods=[
+    ['daily','Today'],['weekly','This Week'],['monthly','This Month'],
+    ['quarterly','Quarter'],['yearly','Year']
+  ];
+  const btns=periods.map(([p,l])=>`<button class="btn btn-xs ${dashPeriod===p?'btn-primary':'btn-ghost'}" onclick="setDashPeriod('${p}',this);${renderFn}()">${l}</button>`).join('');
+  return `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">${btns}</div>`
+    +`<div style="font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:8px;">${dashPeriodLabel()}</div>`;
+}
 
 // ── INIT ──
 (async () => {
