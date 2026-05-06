@@ -5363,7 +5363,22 @@ function renderMonthlyPL(){
     const otherRev=otherRevs.reduce((s,r)=>s+r.amount,0);
     const rev=orderRev+otherRev;
     const exp=exps.reduce((s,e)=>s+e.amount,0);
-    return{rev,exp,profit:rev-exp,orders:orders.length,otherRev};
+    // Build revenue source breakdown string
+    const svcRows=[
+      ['⚖️ Wash & Fold/Dry', orders.reduce((s,o)=>s+(o.wTotal||0),0)],
+      ['✨ Special Items',    orders.reduce((s,o)=>s+(o.spTotal||0),0)],
+      ['🛏 Bedding & Curtains',orders.reduce((s,o)=>s+(o.bdTotal||0),0)],
+      ['💧 Treatments',       orders.reduce((s,o)=>s+(o.trTotal||0),0)],
+    ].filter(([,v])=>v>0).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:.83rem;"><span>${l}</span><strong style="color:var(--accent);">GH₵${v.toFixed(2)}</strong></div>`).join('');
+    const oRevRows=otherRevs.reduce((acc,r)=>{acc[r.type]=(acc[r.type]||0)+r.amount;return acc;},{});
+    const otherRows=Object.entries(oRevRows).map(([t,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:.83rem;"><span>🧹 ${t}</span><strong style="color:var(--accent);">GH₵${v.toFixed(2)}</strong></div>`).join('');
+    const orderRevSub=orders.reduce((s,o)=>s+o.total,0);
+    const svcBreakdown=(svcRows||otherRows)
+      ?svcRows+'<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.8rem;border-bottom:1px solid var(--border);color:var(--muted);"><span>Order Subtotal</span><span>GH₵'+orderRevSub.toFixed(2)+'</span></div>'
+       +(otherRows?'<div style="margin-top:6px;font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;padding-bottom:4px;">Other Revenue</div>'+otherRows:'')
+       +'<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:.88rem;border-top:2px solid var(--border);margin-top:4px;"><strong>Total Revenue</strong><strong style="color:var(--accent);">GH₵'+rev.toFixed(2)+'</strong></div>'
+      :'<div style="color:var(--muted);font-size:.8rem;">No revenue</div>';
+    return{rev,exp,profit:rev-exp,orders:orders.length,otherRev,svcBreakdown};
   }
   const cur=calc(from,to), prev=calc(lFrom,lTo);
 
@@ -5375,9 +5390,9 @@ function renderMonthlyPL(){
   }
 
   document.getElementById('monthlyPL').innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
       ${[
-        ['Revenue','GH₵'+cur.rev.toFixed(2),delta(cur.rev,prev.rev),'var(--accent)'],
+        ['Total Revenue','GH₵'+cur.rev.toFixed(2),delta(cur.rev,prev.rev),'var(--accent)'],
         ['Expenses','GH₵'+cur.exp.toFixed(2),delta(-cur.exp,-prev.exp),'var(--accent2)'],
         ['Net Profit','GH₵'+cur.profit.toFixed(2),delta(cur.profit,prev.profit),cur.profit>=0?'var(--accent)':'var(--accent2)'],
         ['Orders',cur.orders,delta(cur.orders,prev.orders),'var(--blue)'],
@@ -5387,6 +5402,19 @@ function renderMonthlyPL(){
           <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;">${l}</div>
           <div style="margin-top:4px;">${d}</div>
         </div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📊 Revenue by Source</div>
+        ${cur.svcBreakdown||''}
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📈 vs Last Month</div>
+        ${[['Revenue',cur.rev,prev.rev],['Expenses',cur.exp,prev.exp],['Net Profit',cur.profit,prev.profit],['Orders',cur.orders,prev.orders]].map(([l,c2,p])=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:.83rem;">
+            <span>${l}</span><span>${delta(c2,p)}</span>
+          </div>`).join('')}
+      </div>
     </div>`;
 }
 
