@@ -2194,7 +2194,24 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       </div>
 
       <!-- APPROVALS -->
+      <div class="a-page" id="ap-loginlogs">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="card-title" style="margin:0;">🔐 Login History</div>
+            <button class="btn btn-xs btn-secondary" onclick="renderLoginLogs()">🔄 Refresh</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr>
+                <th>Date / Time</th><th>Staff</th><th>Role</th><th>Branch</th><th>Device</th>
+              </tr></thead>
+              <tbody id="loginLogsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <div class="a-page" id="ap-auditlog"></div>
+      <div class="a-page" id="ap-deletedorders"></div>
       <div class="a-page" id="ap-approvals">
         <div class="card" style="margin-bottom:14px;">
           <div class="card-title">✅ Pending Approvals</div>
@@ -3221,6 +3238,19 @@ function doLogin(){
     if(el){el.classList.remove('active');el.style.display='none';}
   });
   attachRealtimeListeners();
+  // Log this login to Firestore
+  const _loginLog={
+    id:'login'+Date.now(),
+    userId:u.id, name:u.name, role:u.role, roleLabel:u.roleLabel||u.role,
+    branchId:u._loginBranch||u.branchId,
+    loginAt:new Date().toISOString(),
+    userAgent:navigator.userAgent.slice(0,120)
+  };
+  if(fbReady){
+    const{doc,setDoc,db:_db}=window._fb;
+    setDoc(doc(_db,'loginLogs',_loginLog.id),_loginLog).catch(()=>{});
+  }
+  auditLog('login',u.name+' logged in as '+( u.roleLabel||u.role),u.id);
   if(u.role==='admin'||u.role==='coadmin') launchAdmin();
   else if(u.role==='manager') launchManager();
   else if(u.role==='supervisor'||(u.role==='staff'&&u.roleLabel==='Supervisor')) launchSupervisor();
@@ -4309,8 +4339,8 @@ const EMAIL_SUBJECTS={
   collected:function(o){return 'Nervol Laundry — Thank You for Order '+o.id;}
 };
 function buildMsg(o,status){return(STATUS_MSGS[status]||STATUS_MSGS.ready)(o);}
-function getWALink(o,status){return 'https://wa.me/'+(o.customerPhone||'').replace(/\D/g,'')+'?text='+encodeURIComponent(buildMsg(o,status));}
-function getSMSLink(o,status){return 'sms:+'+(o.customerPhone||'').replace(/\D/g,'')+'?body='+encodeURIComponent(buildMsg(o,status));}
+function getWALink(o,status){return waLink(o.customerPhone,buildMsg(o,status));}
+function getSMSLink(o,status){return smsLink(o.customerPhone,buildMsg(o,status));}
 function getEmailLink(o,status){var s=(EMAIL_SUBJECTS[status]||EMAIL_SUBJECTS.ready)(o);return 'mailto:?subject='+encodeURIComponent(s)+'&body='+encodeURIComponent(buildMsg(o,status));}
 function offerStatusNotification(o,status){
   var labels={pending:'Order Received',washing:'Now Washing',ready:'Ready for Collection',delivery:'Out for Delivery',collected:'Collected'};
@@ -4562,6 +4592,8 @@ function showAPage(page,el){
     if(page==='approvals')renderApprovals();
     if(page==='revenues'){const _rb=document.getElementById('revBranch');if(_rb&&!_rb.options.length)initRevenuePage('ap-revenues');renderRevenues();}
     if(page==='auditlog'){try{renderAuditLog();}catch(e){}}
+    if(page==='loginlogs'){renderLoginLogs();}
+    if(page==='deletedorders'){renderDeletedOrders();}
   }catch(e){console.error('showAPage:',page,e);}
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
@@ -4689,7 +4721,20 @@ function renderAOrders(){
       </div></td>
     </tr>`;}).join('');
 }
-function delOrder(id){if(!confirm('Delete order '+id+'?'))return;DB.orders=DB.orders.filter(o=>o.id!==id);deleteOrderFB(id);renderAOrders();renderDashboard();showNotif('Deleted.','ok');}
+function delOrder(id){
+  const o=DB.orders.find(x=>x.id===id);if(!o)return;
+  const canDirect=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager');
+  if(canDirect){
+    if(!confirm('Archive order '+id+'?\nIt will be hidden from views but kept for audit purposes.'))return;
+    o.deleted=true;o.deletedBy=CU.name;o.deletedAt=new Date().toISOString();
+    saveOrder(o);
+    try{renderAOrders();}catch(e){}try{renderDashboard();}catch(e){}
+    showNotif('Order '+id+' archived.','ok');
+    auditLog('order-deleted','Order '+id+' archived by '+CU.name,id);
+  } else {
+    requestDeletion('order',id,id);
+  }
+}
 
 // ── EDIT ORDER MODAL ──
 let editingOrderId=null;
@@ -6946,6 +6991,7 @@ function adminViewCustHist(id){
 // FEATURE 10: CSV Export for Reports
 // ══════════════════════════════════════════════════════
 function exportOrdersCSV(){
+  localStorage.setItem('lastExportDate',new Date().toISOString());
   const orders=DB.orders;
   let csv='Order ID,Customer,Phone,Branch,Weight Total,Special Total,Bedding Total,Treatments,Subtotal,Discount,Total,Payment Status,Balance Due,Order Status,Order Type,Created At\n';
   csv+=orders.map(o=>[
@@ -7991,6 +8037,90 @@ function buildDashToggle(renderFn){
     +`<div style="font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:8px;">${dashPeriodLabel()}</div>`;
 }
 
+
+// ── PHONE NORMALIZER ─────────────────────────────────
+// Converts any Ghana phone format to E.164 without + prefix
+// 0244123456 → 233244123456
+// +233244123456 → 233244123456
+// 233244123456 → 233244123456
+function normalizePhone(phone){
+  if(!phone) return '';
+  const digits=String(phone).replace(/\D/g,'');
+  if(digits.startsWith('233')) return digits;          // already has country code
+  if(digits.startsWith('0')) return '233'+digits.slice(1); // local format
+  if(digits.length===9) return '233'+digits;           // 9-digit without leading 0
+  return digits;
+}
+// Returns wa.me link: wa.me/233XXXXXXXXX
+function waLink(phone, msg){
+  const n=normalizePhone(phone);
+  if(!n) return '#';
+  return 'https://wa.me/'+n+(msg?'?text='+encodeURIComponent(msg):'');
+}
+// Returns sms link: sms:+233XXXXXXXXX
+function smsLink(phone, msg){
+  const n=normalizePhone(phone);
+  if(!n) return '#';
+  return 'sms:+'+n+(msg?'?body='+encodeURIComponent(msg):'');
+}
+
+
+// ── LOGIN LOGS ────────────────────────────────────────
+async function renderLoginLogs(){
+  const tbody=document.getElementById('loginLogsBody');if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr>';
+  try{
+    if(!fbReady){tbody.innerHTML='<tr><td colspan="5">Offline — login logs require Firestore.</td></tr>';return;}
+    const{collection,getDocs,query,orderBy,limit,db:_db}=window._fb;
+    const snap=await getDocs(query(collection(_db,'loginLogs'),orderBy('loginAt','desc'),limit(100)));
+    const logs=[];snap.forEach(d=>logs.push(d.data()));
+    if(!logs.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">🔐</div><p>No login records yet.</p></div></td></tr>';return;}
+    tbody.innerHTML=logs.map(l=>'<tr>'
+      +'<td style="font-size:.76rem;">'+new Date(l.loginAt).toLocaleString('en-GH')+'</td>'
+      +'<td><strong>'+l.name+'</strong></td>'
+      +'<td><span class="badge badge-washing" style="font-size:.7rem;">'+( l.roleLabel||l.role)+'</span></td>'
+      +'<td style="font-size:.76rem;">'+branchName(l.branchId)+'</td>'
+      +'<td style="font-size:.68rem;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;">'+( l.userAgent||'—').slice(0,60)+'</td>'
+      +'</tr>').join('');
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="5" style="color:var(--accent2);">Error loading logs: '+e.message+'</td></tr>';
+  }
+}
+
+// ── DELETED ORDERS ────────────────────────────────────
+function renderDeletedOrders(){
+  const pg=document.getElementById('ap-deletedorders');if(!pg)return;
+  const deleted=DB.orders.filter(o=>o.deleted);
+  pg.innerHTML='<div class="card">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+    +'<div class="card-title" style="margin:0;">🗑 Archived Orders ('+deleted.length+')</div>'
+    +'<div style="font-size:.78rem;color:var(--muted);">Soft-deleted orders kept for audit</div></div>'
+    +(deleted.length?'<div class="tbl-wrap"><table class="tbl"><thead><tr>'
+    +'<th>Order ID</th><th>Customer</th><th>Total</th><th>Deleted By</th><th>Deleted At</th><th>Restore</th>'
+    +'</tr></thead><tbody>'
+    +deleted.map(o=>'<tr style="opacity:.7;">'
+      +'<td><span class="oid" style="text-decoration:line-through;">'+o.id+'</span></td>'
+      +'<td>'+o.customerName+'</td>'
+      +'<td>GH₵'+o.total.toFixed(2)+'</td>'
+      +'<td style="font-size:.76rem;">'+( o.deletedBy||'—')+'</td>'
+      +'<td style="font-size:.74rem;">'+fmtDateShort(o.deletedAt)+'</td>'
+      +'<td><button class="btn btn-xs btn-secondary" onclick="restoreOrder('+JSON.stringify(o.id)+')">↩ Restore</button></td>'
+      +'</tr>').join('')
+    +'</tbody></table></div>'
+    :'<div class="empty"><div class="ei">🗑</div><p>No archived orders.</p></div>')
+    +'</div>';
+}
+
+function restoreOrder(id){
+  const o=DB.orders.find(x=>x.id===id);if(!o)return;
+  if(!confirm('Restore order '+id+' back to active orders?'))return;
+  delete o.deleted;delete o.deletedBy;delete o.deletedAt;
+  saveOrder(o);
+  renderDeletedOrders();
+  showNotif('Order '+id+' restored ✅','ok');
+  auditLog('order-restored','Order '+id+' restored by '+CU.name,id);
+}
+
 // ── INIT ──
 (async () => {
   await initFirebase();
@@ -8137,8 +8267,8 @@ function renderDebtTracker(){
     <td><strong style="color:var(--accent2);">GH₵${c.debtTotal.toFixed(2)}</strong></td>
     <td style="font-size:.76rem;color:var(--muted);">${fmtDate(c.lastOrder)}</td>
     <td>
-      <a href="https://wa.me/${(c.phone||'').replace(/\D/g,'')}" target="_blank" class="btn btn-xs btn-whatsapp">💬</a>
-      <a href="sms:+${(c.phone||'').replace(/\D/g,'')}" class="btn btn-xs btn-sms">✉️</a>
+      <a href="${waLink(c.phone)}" target="_blank" class="btn btn-xs btn-whatsapp">💬</a>
+      <a href="${smsLink(c.phone)}" class="btn btn-xs btn-sms">✉️</a>
     </td>
   </tr>`).join('');
 }
@@ -8564,9 +8694,9 @@ function buildQuoteMsg(total){
 }
 function shareQuoteWA(){
   const el=document.getElementById('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
-  const phone=(document.getElementById('q-phone')?.value||'').replace(/\D/g,'');
+  const phone=normalizePhone(document.getElementById('q-phone')?.value||'');
   const msg=buildQuoteMsg(total);
-  if(phone)window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,'_blank');
+  if(phone)window.open(waLink(phone,msg),'_blank');
   else if(navigator.clipboard)navigator.clipboard.writeText(msg).then(()=>showNotif('Quote copied!','ok'));
 }
 function convertQuoteToOrder(){
