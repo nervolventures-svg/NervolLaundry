@@ -1666,7 +1666,18 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
               <div class="ftab" onclick="setAOFilter('overdue',this)">⚠️ Overdue</div>
             </div>
           </div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Branch</th><th>Summary</th><th>Total</th><th>Payment</th><th>Balance</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="aOrdersBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr>
+  <th class="sortable" data-col="id" onclick="sortBy('aOrderBody','id',renderAOrders)">Order ID</th>
+  <th class="sortable" data-col="customer" onclick="sortBy('aOrderBody','customer',renderAOrders)">Customer</th>
+  <th class="sortable" data-col="branch" onclick="sortBy('aOrderBody','branch',renderAOrders)">Branch</th>
+  <th>Summary</th>
+  <th class="sortable" data-col="total" onclick="sortBy('aOrderBody','total',renderAOrders)">Total</th>
+  <th class="sortable" data-col="payment" onclick="sortBy('aOrderBody','payment',renderAOrders)">Payment</th>
+  <th>Balance</th>
+  <th class="sortable" data-col="status" onclick="sortBy('aOrderBody','status',renderAOrders)">Status</th>
+  <th class="sortable" data-col="date" onclick="sortBy('aOrderBody','date',renderAOrders)">Date</th>
+  <th>Actions</th>
+</tr></thead><tbody id="aOrderBody"></tbody></table></div>
         </div>
       </div>
 
@@ -3483,7 +3494,7 @@ function renderSExpBody(){
     tbody.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei">💸</div><p>No expenses logged yet for this branch.</p></div></td></tr>`;
     return;
   }
-  const sortedExps=sortData(exps,'expBody',_expGetters);
+  let sortedExps=sortData(exps,'expBody',_expGetters);
   setTimeout(()=>applySortHeaders('expBody'),50);
   tbody.innerHTML=sortedExps.map(e=>`
     <tr>
@@ -4710,7 +4721,7 @@ function renderAOrders(){
   });
   const tbody=document.getElementById('aOrderBody');if(!tbody)return;
   // Sort
-  const _aOrdGetters={id:o=>o.id,customer:o=>o.customerName,total:o=>o.total,
+  const _aOrdGetters={id:o=>o.id,customer:o=>o.customerName,branch:o=>branchName(o.branchId),total:o=>o.total,
     payment:o=>o.payStatus,status:o=>o.status,date:o=>o.createdAt};
   orders=sortData(orders,'aOrderBody',_aOrdGetters);
   setTimeout(()=>applySortHeaders('aOrderBody'),50);
@@ -5141,7 +5152,7 @@ function printReport(){window.print();}
 function renderRiders(){
   const tbody=document.getElementById('riderBody');if(!tbody)return;
   const _riderGetters={name:r=>r.name,deliveries:r=>DB.riderTrips?.filter(t=>t.riderId===r.id).length||0,completed:r=>DB.riderTrips?.filter(t=>t.riderId===r.id&&t.status==='completed').length||0,rate:r=>r.rate||0};
-  const sortedRiders=sortData(DB.riders,'riderBody',_riderGetters);
+  let sortedRiders=sortData(DB.riders,'riderBody',_riderGetters);
   setTimeout(()=>applySortHeaders('riderBody'),50);
   tbody.innerHTML=sortedRiders.map(r=>{
     const deliveries=DB.orders.filter(o=>o.riderId===r.id);
@@ -5168,7 +5179,7 @@ function delRider(id){if(!confirm('Remove this rider?'))return;DB.riders=DB.ride
 function renderBranches(){
   const tbody=document.getElementById('branchBody');if(!tbody)return;
   const _branchGetters={name:b=>b.name,status:b=>b.active?'active':'inactive',orders:b=>DB.orders.filter(o=>o.branchId===b.id).length,created:b=>b.createdAt};
-  const sortedBranches=sortData(DB.branches,'branchBody',_branchGetters);
+  let sortedBranches=sortData(DB.branches,'branchBody',_branchGetters);
   setTimeout(()=>applySortHeaders('branchBody'),50);
   tbody.innerHTML=sortedBranches.map(b=>{
     const oc=DB.orders.filter(o=>o.branchId===b.id).length;
@@ -5217,7 +5228,7 @@ function renderStaff(){
   const tbody=document.getElementById('staffBody');if(!tbody)return;
   const _staffGetters={name:u=>u.name,role:u=>u.roleLabel||u.role,branch:u=>branchName(u.branchId)};
   const branchOpts='<option value="all">All Branches</option>'+DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-  const sortedUsers=sortData(DB.users,'staffBody',_staffGetters);
+  let sortedUsers=sortData(DB.users,'staffBody',_staffGetters);
   setTimeout(()=>applySortHeaders('staffBody'),50);
   tbody.innerHTML=sortedUsers.map(u=>{
     const isAdmin=u.role==='admin';
@@ -7924,7 +7935,7 @@ function renderRevenues(){
     +'</div>';
   // Sort and render
   const getters={date:r=>r.createdAt,amount:r=>r.amount};
-  const sorted=sortData([...revs],'revBody',getters).reverse();
+  let sorted=sortData([...revs],'revBody',getters).reverse();
   setTimeout(()=>applySortHeaders('revBody'),50);
   if(!sorted.length){
     tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="ei">💰</div><p>No revenue entries yet.</p></div></td></tr>';
