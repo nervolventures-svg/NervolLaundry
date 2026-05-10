@@ -1030,7 +1030,17 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
             <div class="ftab" onclick="setBoardFilter('overdue',this)">⚠️ Overdue</div>
           </div>
         </div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Summary</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="boardBody"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr>
+  <th class="sortable" data-col="id" onclick="sortBy('aOrderBody','id',renderAOrders)">Order ID</th>
+  <th class="sortable" data-col="customer" onclick="sortBy('aOrderBody','customer',renderAOrders)">Customer</th>
+  <th>Phone</th>
+  <th>Summary</th>
+  <th class="sortable" data-col="total" onclick="sortBy('aOrderBody','total',renderAOrders)">Total</th>
+  <th class="sortable" data-col="payment" onclick="sortBy('aOrderBody','payment',renderAOrders)">Payment</th>
+  <th class="sortable" data-col="status" onclick="sortBy('aOrderBody','status',renderAOrders)">Status</th>
+  <th class="sortable" data-col="date" onclick="sortBy('aOrderBody','date',renderAOrders)">Date</th>
+  <th>Actions</th>
+</tr></thead><tbody id="boardBody"></tbody></table></div>
       </div>
     </div>
 
@@ -4699,6 +4709,11 @@ function renderAOrders(){
     return m&&bf_&&f&&d;
   });
   const tbody=document.getElementById('aOrdersBody');if(!tbody)return;
+  // Sort
+  const _aOrdGetters={id:o=>o.id,customer:o=>o.customerName,total:o=>o.total,
+    payment:o=>o.payStatus,status:o=>o.status,date:o=>o.createdAt};
+  orders=sortData(orders,'aOrderBody',_aOrdGetters);
+  setTimeout(()=>applySortHeaders('aOrderBody'),50);
   if(!orders.length){tbody.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="ei">🧺</div><p>No orders.</p></div></td></tr>`;return;}
   tbody.innerHTML=orders.map(o=>{
     const od=isOverdue(o);
@@ -4810,6 +4825,9 @@ function renderCustomers(){
   const q=(document.getElementById('custSearch2')?.value||'').toLowerCase();
   const custs=DB.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.phone||'').includes(q));
   const tbody=document.getElementById('custTableBody');if(!tbody)return;
+  const _custGetters={name:c=>c.name,phone:c=>c.phone,orders:c=>c.totalOrders||0,spent:c=>c.totalSpent||0,since:c=>c.createdAt};
+  custs=sortData(custs,'custTableBody',_custGetters);
+  setTimeout(()=>applySortHeaders('custTableBody'),50);
   if(!custs.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="ei">👤</div><p>No customers yet.</p></div></td></tr>';return;}
   const isAdmin=CU?.role==='admin';
   const isSup=CU?.roleLabel==='Supervisor';
@@ -6355,7 +6373,16 @@ function renderMgrOrders(){
       <div class="ftab" onclick="setAOrderFilter('overdue',this)">⚠️ Overdue</div>
     </div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Summary</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+      <thead><tr>
+              <th class="sortable" data-col="id" onclick="sortBy('aOrderBody','id',renderAOrders)">Order ID</th>
+              <th class="sortable" data-col="customer" onclick="sortBy('aOrderBody','customer',renderAOrders)">Customer</th>
+              <th>Phone</th><th>Summary</th>
+              <th class="sortable" data-col="total" onclick="sortBy('aOrderBody','total',renderAOrders)">Total</th>
+              <th class="sortable" data-col="payment" onclick="sortBy('aOrderBody','payment',renderAOrders)">Payment</th>
+              <th class="sortable" data-col="status" onclick="sortBy('aOrderBody','status',renderAOrders)">Status</th>
+              <th class="sortable" data-col="date" onclick="sortBy('aOrderBody','date',renderAOrders)">Date</th>
+              <th>Actions</th>
+            </tr></thead>
       <tbody id="aOrderBody"></tbody>
     </table></div>`;
   renderAOrders();
@@ -8424,7 +8451,11 @@ function staffResolveComplaint(id){
 }
 function renderAdminComplaints(){
   const tbody=document.getElementById('aCompBody');if(!tbody)return;
-  const list=DB.complaints.filter(c=>compFilter==='all'||c.status===compFilter).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let list=DB.complaints.filter(c=>compFilter==='all'||c.status===compFilter);
+  const _compGetters={date:c=>c.createdAt,customer:c=>c.customerName,type:c=>c.type,branch:c=>c.branchId,status:c=>c.status};
+  list=sortData(list,'aCompBody',_compGetters);
+  if(!_sortState['aCompBody']?.col) list=list.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  setTimeout(()=>applySortHeaders('aCompBody'),50);
   if(!list.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty"><div class="ei">⚠️</div><p>No complaints.</p></div></td></tr>';return;}
   tbody.innerHTML=list.map(c=>`<tr>
     <td style="font-size:.74rem;">${fmtDate(c.createdAt)}</td>
