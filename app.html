@@ -4701,7 +4701,7 @@ function setAOFilter(f,el){aoFilter=f;document.querySelectorAll('#ap-orders .fta
 function renderAOrders(){
   const q=(document.getElementById('aOrderSearch')?.value||'').toLowerCase();
   const bf=getBranchFilter();
-  const orders=DB.orders.filter(o=>{
+  let orders=DB.orders.filter(o=>{
     const m=o.id.toLowerCase().includes(q)||o.customerName.toLowerCase().includes(q)||(o.customerPhone||'').includes(q);
     const bf_=bf==='all'||o.branchId===bf;
     const f=aoFilter==='all'||(aoFilter==='overdue'?isOverdue(o):o.status===aoFilter);
