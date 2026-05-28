@@ -7978,18 +7978,21 @@ function renderRevenues(){
     return;
   }
   const canEdit=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager');
-  tbody.innerHTML=sorted.map(r=>'<tr>'
-    +'<td style="font-size:.76rem;">'+r.date+'</td>'
-    +'<td style="font-size:.76rem;">'+branchName(r.branchId)+'</td>'
-    +'<td><span class="badge badge-washing" style="font-size:.7rem;">'+r.type+'</span></td>'
-    +'<td style="font-size:.82rem;max-width:200px;">'+r.comment+'</td>'
-    +'<td><strong style="color:var(--accent);">GH₵'+r.amount.toFixed(2)+'</strong></td>'
-    +'<td style="font-size:.74rem;">'+r.loggedBy+'</td>'
-    +'<td><div class="tbl-actions">'
-    +(canEdit?'<button class="btn btn-xs btn-ghost" onclick="openEditRevenue('+JSON.stringify(r.id)+')">✏️ Edit</button>':'')
-    +'<button class="btn btn-xs btn-danger" onclick="deleteRevenue('+JSON.stringify(r.id)+')">Del</button>'
-    +'</div></td>'
-    +'</tr>').join('');
+  tbody.innerHTML=sorted.map(r=>{
+    const editBtn=canEdit
+      ?'<button class="btn btn-xs btn-ghost" onclick="openEditRevenue(\'' +r.id+ '\')">✏️ Edit</button>'
+      :'';
+    const delBtn='<button class="btn btn-xs btn-danger" onclick="deleteRevenue(\'' +r.id+ '\')">Del</button>';
+    return '<tr>'
+      +'<td style="font-size:.76rem;">'+r.date+'</td>'
+      +'<td style="font-size:.76rem;">'+branchName(r.branchId)+'</td>'
+      +'<td><span class="badge badge-washing" style="font-size:.7rem;">'+r.type+'</span></td>'
+      +'<td style="font-size:.82rem;max-width:200px;">'+r.comment+'</td>'
+      +'<td><strong style="color:var(--accent);">GH₵'+r.amount.toFixed(2)+'</strong></td>'
+      +'<td style="font-size:.74rem;">'+(r.loggedBy||'—')+'</td>'
+      +'<td><div class="tbl-actions">'+editBtn+delBtn+'</div></td>'
+      +'</tr>';
+  }).join('');
 }
 
 function deleteRevenue(id){
@@ -8202,8 +8205,26 @@ function restoreOrder(id){
 
 // ── EDIT REVENUE ─────────────────────────────────────
 function openEditRevenue(id){
+  console.log('openEditRevenue called with id:', id, 'DB.revenues length:', (DB.revenues||[]).length);
   const r=(DB.revenues||[]).find(x=>x.id===id);
-  if(!r){showNotif('Revenue entry not found.','err');return;}
+  if(!r){
+    console.error('Revenue not found. Available IDs:', (DB.revenues||[]).map(x=>x.id));
+    // Try reloading from Firestore then retry
+    if(fbReady && (DB.revenues||[]).length===0){
+      showNotif('Reloading revenue data...','ok');
+      const{collection,getDocs,db:_db}=window._fb;
+      getDocs(collection(_db,'revenues')).then(snap=>{
+        DB.revenues=[];snap.forEach(d=>DB.revenues.push(d.data()));
+        const r2=DB.revenues.find(x=>x.id===id);
+        if(r2) openEditRevenue(id);
+        else showNotif('Revenue entry not found.','err');
+      });
+      return;
+    }
+    showNotif('Revenue entry not found — try refreshing the page.','err');
+    return;
+  }
+  console.log('Found revenue:', r);
   // Populate branch select
   const brSel=document.getElementById('editRevBranch');
   if(brSel) brSel.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'" '+(b.id===r.branchId?'selected':'')+'>'+b.name+'</option>').join('');
