@@ -138,7 +138,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 .a-sb-logout{width:100%;padding:9px;background:rgba(201,74,26,.18);border:1px solid rgba(201,74,26,.28);border-radius:8px;color:#e07060;font-size:.8rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
 .a-sb-logout:hover{background:rgba(201,74,26,.32);}
 .a-main{margin-left:232px;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;overflow-x:hidden;}
-.a-topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.a-topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
 .a-page-title{font-family:'Bebas Neue',sans-serif;font-size:1.45rem;letter-spacing:1px;color:var(--ink);}
 .a-topbar-right{display:flex;align-items:center;gap:14px;}
 .branch-filter-wrap select{padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;background:#fff;color:var(--ink);}
@@ -410,8 +410,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
     transition:transform .28s cubic-bezier(.4,0,.2,1);
     z-index:500;
     width:260px;
+    position:fixed;
+    top:0;left:0;bottom:0;
+    overflow-y:auto;
   }
   .a-sidebar.mob-open{transform:translateX(0);}
+  /* Main area takes full width when sidebar is hidden */
+  .a-main{margin-left:0 !important;width:100%;}
   .mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:499;}
   .mob-overlay.open{display:block;}
   .a-main{margin-left:0;padding-bottom:0;}
@@ -460,7 +465,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 @media(max-width:600px){
   /* Layout */
   .s-body{padding:10px 10px 100px;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
-  .a-body{padding:10px 10px 80px;}
+  .a-body{padding:10px 10px 80px;overflow-x:hidden;}
+  .card{overflow:hidden;}
+  .a-page{width:100%;overflow-x:hidden;}
   .s-nav{padding:0 10px;overflow-x:auto;gap:0;}
   .s-nav-tab{padding:10px 12px;font-size:.78rem;}
 
@@ -468,8 +475,9 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   /* Prevent iOS input zoom */
   input,select,textarea{font-size:16px !important;}
   .fg input,.fg select,.fg textarea{font-size:16px !important;}
-  /* Manager/Admin sidebar hidden on mobile */
-  .a-sidebar{display:none !important;}
+  /* Manager/Admin sidebar: slide-in on mobile, never display:none */
+  .a-sidebar:not(.mob-open){transform:translateX(-100%);}
+  .a-sidebar.mob-open{transform:translateX(0) !important;display:flex !important;}
   /* Staff nav scrollable */
   .s-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
   .s-nav-tab{flex-shrink:0;}
@@ -485,15 +493,33 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   /* Chart row stack */
   .chart-row{flex-direction:column;}
   /* Modal */
-  .modal{margin:10px;max-height:90vh;overflow-y:auto;}
+  .modal{margin:10px;max-height:90vh;overflow-y:auto;width:calc(100% - 20px) !important;max-width:none !important;}
+  .modal-ov{align-items:flex-start;padding-top:20px;}
   /* Board bar */
   .board-bar{flex-wrap:wrap;gap:8px;}
+  .tbl-actions{display:flex;flex-wrap:wrap;gap:4px;}
+  .tbl-actions .btn{padding:5px 8px;font-size:.72rem;}
+  /* A-topbar stays visible */
+  .a-topbar{position:sticky;top:0;z-index:100;background:var(--surface);}
+  /* Prevent content from going under topbar */
+  .a-body{padding-top:0;}
   /* Treat grid */
   .treat-grid{grid-template-columns:repeat(2,1fr);}
   /* Form grid force 1 col */
   .form-grid,.form-grid.g3{grid-template-columns:1fr !important;}
-  /* Hide excess columns in tables on small screens */
-  .tbl th:nth-child(n+5),.tbl td:nth-child(n+5){display:none;}
+  /* Smart column hiding on small screens */
+  /* Orders table: hide branch, summary, balance, date on mobile */
+  #aOrderBody td:nth-child(3),#aOrderBody th:nth-child(3),
+  #aOrderBody td:nth-child(4),#aOrderBody th:nth-child(4),
+  #aOrderBody td:nth-child(7),#aOrderBody th:nth-child(7),
+  #aOrderBody td:nth-child(9),#aOrderBody th:nth-child(9){display:none;}
+  /* Expenditure: hide date column */
+  #expBody td:nth-child(1),#expBody th:nth-child(1){display:none;}
+  /* Customers: hide address, since columns */
+  #custTableBody td:nth-child(3),#custTableBody th:nth-child(3),
+  #custTableBody td:nth-child(5),#custTableBody th:nth-child(5){display:none;}
+  /* Tbl-wrap always scrollable as fallback */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .search-input{font-size:16px !important;}
   .w-row input,.i-row input{font-size:16px !important;}
 
@@ -636,9 +662,14 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
 /* Manager App Mobile */
 @media(max-width:900px){
-  #managerApp .a-sidebar{display:none;}
+  /* Manager sidebar uses slide-in, same as admin */
+  #managerApp .a-sidebar{transform:translateX(-100%);}
+  #managerApp .a-sidebar.mob-open{transform:translateX(0) !important;display:flex !important;}
   #managerApp .a-body{padding:10px 10px 80px;}
   #managerApp .a-page{padding:0;}
+  /* Supervisor app same */
+  #supervisorApp .a-sidebar{transform:translateX(-100%);}
+  #supervisorApp .a-sidebar.mob-open{transform:translateX(0) !important;display:flex !important;}
 }
 @media(max-width:600px){
   .stats-row{grid-template-columns:repeat(2,1fr)!important;}
