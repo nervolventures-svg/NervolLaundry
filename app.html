@@ -3062,6 +3062,7 @@ async function load(){
       DB.floats=s.floats||[];
       DB.quotes=s.quotes||[];
       DB.momoLogs=s.momoLogs||[];
+      DB.revenues=s.revenues||[];
     }
     // Users
     const uSnap=await getDoc(doc(db,'settings','users'));
@@ -3081,6 +3082,10 @@ async function load(){
     // Expenditures
     const eSnap=await getDocs(collection(db,'expenditures'));
     if(!eSnap.empty){DB.expenditures=[];eSnap.forEach(d=>DB.expenditures.push(d.data()));DB.expenditures.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));}
+    // Revenues (also fetch from collection as backup)
+    const revSnap=await getDocs(collection(db,'revenues'));
+    if(!revSnap.empty){DB.revenues=[];revSnap.forEach(d=>DB.revenues.push(d.data()));DB.revenues.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));}
+    else{DB.revenues=DB.revenues||[];}
     // Shifts
     const shSnap=await getDocs(collection(db,'shifts'));
     if(!shSnap.empty){DB.shifts=[];shSnap.forEach(d=>DB.shifts.push(d.data()));DB.shifts.sort((a,b)=>new Date(b.date)-new Date(a.date));}
