@@ -7972,6 +7972,7 @@ function renderRevenues(){
     tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="ei">💰</div><p>No revenue entries yet.</p></div></td></tr>';
     return;
   }
+  const canEdit=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager');
   tbody.innerHTML=sorted.map(r=>'<tr>'
     +'<td style="font-size:.76rem;">'+r.date+'</td>'
     +'<td style="font-size:.76rem;">'+branchName(r.branchId)+'</td>'
@@ -7979,7 +7980,10 @@ function renderRevenues(){
     +'<td style="font-size:.82rem;max-width:200px;">'+r.comment+'</td>'
     +'<td><strong style="color:var(--accent);">GH₵'+r.amount.toFixed(2)+'</strong></td>'
     +'<td style="font-size:.74rem;">'+r.loggedBy+'</td>'
-    +'<td><button class="btn btn-xs btn-danger" onclick="deleteRevenue('+JSON.stringify(r.id)+')">Del</button></td>'
+    +'<td><div class="tbl-actions">'
+    +(canEdit?'<button class="btn btn-xs btn-ghost" onclick="openEditRevenue('+JSON.stringify(r.id)+')">✏️ Edit</button>':'')
+    +'<button class="btn btn-xs btn-danger" onclick="deleteRevenue('+JSON.stringify(r.id)+')">Del</button>'
+    +'</div></td>'
     +'</tr>').join('');
 }
 
@@ -8188,6 +8192,53 @@ function restoreOrder(id){
   renderDeletedOrders();
   showNotif('Order '+id+' restored ✅','ok');
   auditLog('order-restored','Order '+id+' restored by '+CU.name,id);
+}
+
+
+// ── EDIT REVENUE ─────────────────────────────────────
+function openEditRevenue(id){
+  const r=(DB.revenues||[]).find(x=>x.id===id);
+  if(!r){showNotif('Revenue entry not found.','err');return;}
+  // Populate branch select
+  const brSel=document.getElementById('editRevBranch');
+  if(brSel) brSel.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'" '+(b.id===r.branchId?'selected':'')+'>'+b.name+'</option>').join('');
+  // Populate fields
+  document.getElementById('editRevId').value=r.id;
+  document.getElementById('editRevType').value=r.type||'Other';
+  document.getElementById('editRevAmt').value=r.amount||'';
+  document.getElementById('editRevDate').value=r.date||r.createdAt?.slice(0,10)||'';
+  document.getElementById('editRevComment').value=r.comment||'';
+  openModal('editRevenueModal');
+}
+
+function saveEditRevenue(){
+  const id=document.getElementById('editRevId').value;
+  const r=(DB.revenues||[]).find(x=>x.id===id);
+  if(!r){showNotif('Entry not found.','err');return;}
+  const branch=document.getElementById('editRevBranch').value;
+  const type=document.getElementById('editRevType').value;
+  const amt=parseFloat(document.getElementById('editRevAmt').value||0);
+  const date=document.getElementById('editRevDate').value;
+  const comment=(document.getElementById('editRevComment').value||'').trim();
+  if(!comment){showNotif('Please enter a comment/description.','err');return;}
+  if(!amt||amt<=0){showNotif('Please enter a valid amount.','err');return;}
+  // Apply changes
+  const oldAmt=r.amount;
+  r.branchId=branch;
+  r.type=type;
+  r.amount=amt;
+  r.date=date;
+  r.comment=comment;
+  r.editedBy=CU.name;
+  r.editedAt=new Date().toISOString();
+  // Save
+  saveRevenue(r);
+  auditLog('revenue-edited','Revenue entry edited by '+CU.name+': '+type+' GH₵'+oldAmt.toFixed(2)+' → GH₵'+amt.toFixed(2),id);
+  closeModal('editRevenueModal');
+  renderRevenues();
+  // Also refresh any supervisor revenue view
+  try{renderSupExp();}catch(e){}
+  showNotif('Revenue entry updated ✅','ok');
 }
 
 // ── INIT ──
@@ -8932,6 +8983,50 @@ document.addEventListener('click',e=>{
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button class="btn btn-danger" onclick="submitDeleteRequest()" style="flex:1;">🗑 Send Request</button>
       <button class="btn btn-secondary" onclick="closeModal('deleteRequestModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- EDIT REVENUE MODAL -->
+<div class="modal-ov" id="editRevenueModal" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title">✏️ Edit Revenue Entry</div>
+    <input type="hidden" id="editRevId">
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div class="fg">
+        <label>Branch</label>
+        <select id="editRevBranch"></select>
+      </div>
+      <div class="fg">
+        <label>Revenue Type</label>
+        <select id="editRevType">
+          <option value="Cleaning Service">Cleaning Service</option>
+          <option value="Cash Collection">Cash Collection</option>
+          <option value="Advance / Deposit">Advance / Deposit</option>
+          <option value="Rider Fee Collected">Rider Fee Collected</option>
+          <option value="Debt Recovery">Debt Recovery</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div class="fg">
+        <label>Amount (GH₵) *</label>
+        <input type="number" id="editRevAmt" min="0" step="0.50" placeholder="0.00">
+      </div>
+      <div class="fg">
+        <label>Date</label>
+        <input type="date" id="editRevDate">
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:14px;">
+      <label>Comment / Description *</label>
+      <textarea id="editRevComment" rows="3" placeholder="Describe this revenue entry..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveEditRevenue()">💾 Save Changes</button>
+      <button class="btn btn-secondary" onclick="closeModal('editRevenueModal')">Cancel</button>
     </div>
   </div>
 </div>
