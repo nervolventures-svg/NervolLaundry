@@ -4338,10 +4338,15 @@ function updateOrderStatus(id,status){
   const o=DB.orders.find(x=>x.id===id);if(!o)return;
   o.status=status;o.statusUpdatedAt=new Date().toISOString();
   saveOrder(o);
-  renderBoard();
-  if(typeof renderAOrders==='function')renderAOrders();
-  if(typeof renderDashboard==='function')renderDashboard();
+  try{renderBoard();}catch(e){}
+  try{if(typeof renderAOrders==='function')renderAOrders();}catch(e){}
+  try{if(typeof renderDashboard==='function')renderDashboard();}catch(e){}
+  try{if(typeof renderMgrOrders==='function')renderMgrOrders();}catch(e){}
+  try{if(typeof renderMgrDashboard==='function')renderMgrDashboard();}catch(e){}
+  try{if(typeof renderSupOrders==='function')renderSupOrders();}catch(e){}
+  try{if(typeof renderSupDashboard==='function')renderSupDashboard();}catch(e){}
   checkOverdue();
+  auditLog('status-update','Order '+id+' → '+status+' by '+(CU?.name||'?'),id);
   if((o.customerPhone||'').replace(/\D/g,'')){offerStatusNotification(o,status);}
   else{showNotif(id+' → '+status,'ok');}
 }
@@ -7478,7 +7483,7 @@ function showSupPage(page,el){
   if(el)el.classList.add('active');
   document.getElementById('supPageTitle').textContent={
     dashboard:'Dashboard',orders:'All Orders',neworder:'New Order',
-    customers:'Customers',expenditure:'Expenditure',complaints:'Complaints',
+    customers:'Customers',expenditure:'Expenditure',revenues:'Other Revenue',complaints:'Complaints',
     shift:'Shift Handover',quote:'Quote',riders:'Riders',ridertrips:'Rider Trips'
   }[page]||page;
   if(page==='dashboard') renderSupDashboard();
@@ -7512,26 +7517,27 @@ function renderSupDashboard(){
   const seesAll=branch==='all';
   const today=new Date().toDateString();
   const{from:supFrom,to:supTo}=getDashRange();
-  const branchOrders=seesAll?DB.orders:DB.orders.filter(o=>o.branchId===branch);
+  const branchOrders=(seesAll?DB.orders:DB.orders.filter(o=>o.branchId===branch)).filter(o=>!o.deleted);
   const todayOrders=branchOrders.filter(o=>{const d=new Date(o.createdAt);return d>=supFrom&&d<=supTo;});
   const active=branchOrders.filter(o=>!['collected','cancelled'].includes(o.status));
   const overdue=branchOrders.filter(o=>isOverdue&&isOverdue(o));
   const openComps=(DB.complaints||[]).filter(c=>c.status!=='resolved'&&(seesAll||c.branchId===branch));
   const todayExp=(DB.expenditures||[]).filter(e=>{const d=new Date(e.date+'T00:00:00');return d>=supFrom&&d<=supTo&&(seesAll||e.branchId===branch);});
+  const todayOtherRev=(DB.revenues||[]).filter(r=>{const d=new Date((r.date||r.createdAt||'').slice(0,10)+'T12:00:00');return d>=supFrom&&d<=supTo&&(seesAll||r.branchId===branch);}).reduce((s,r2)=>s+r2.amount,0);
   const ready=branchOrders.filter(o=>o.status==='ready');
 
   // Build recent orders rows safely
   const recentRows=branchOrders.slice(0,8).map(o=>'<tr><td class="oid" style="font-size:.72rem;">'+o.id+'</td>'
     +'<td>'+o.customerName+'</td><td style="font-size:.74rem;">'+branchName(o.branchId)+'</td>'
     +'<td>'+statusBadge(o.status)+'</td>'
-    +'<td><button class="btn btn-xs btn-secondary" onclick="openStatusModal('+JSON.stringify(o.id)+')">Update</button></td></tr>').join('')
+    +'<td><button class="btn btn-xs btn-secondary" onclick="openStatusModal('+o.id+')">Update</button></td></tr>').join('')
     ||'<tr><td colspan="5"><div class="empty"><div class="ei">🧺</div><p>No orders.</p></div></td></tr>';
 
   // Build open complaints rows safely
   const compRows=openComps.slice(0,5).map(c=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">'
     +'<div><div style="font-size:.84rem;font-weight:600;">'+c.customerName+'</div>'
     +'<div style="font-size:.74rem;color:var(--muted);">'+c.type+' · '+(c.description||'').slice(0,40)+'</div></div>'
-    +'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint('+JSON.stringify(c.id)+')">✅ Resolve</button></div>').join('');
+    +'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint('+c.id+')">✅ Resolve</button></div>').join('');
 
   // Build expenses rows
   const expRows=todayExp.map(e=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem;">'
@@ -7580,7 +7586,7 @@ function renderSupOrders(){
   const branch=_supBranch();
   const seesAll=branch==='all';
   const q=(document.getElementById('supOrderSearch')?.value||'').toLowerCase();
-  let orders=seesAll?DB.orders:DB.orders.filter(o=>o.branchId===branch);
+  let orders=(seesAll?DB.orders:DB.orders.filter(o=>o.branchId===branch)).filter(o=>!o.deleted);
   if(supOrderFilter==='overdue') orders=orders.filter(o=>isOverdue&&isOverdue(o));
   else if(supOrderFilter!=='all') orders=orders.filter(o=>o.status===supOrderFilter);
   if(q) orders=orders.filter(o=>o.id.toLowerCase().includes(q)||o.customerName.toLowerCase().includes(q));
@@ -7601,8 +7607,8 @@ function renderSupOrders(){
       +'<td>'+statusBadge(o.status)+'</td>'
       +'<td style="font-size:.76rem;">'+fmtDateShort(o.createdAt)+'</td>'
       +'<td><div class="tbl-actions">'
-      +'<button class="btn btn-xs btn-secondary" onclick="openStatusModal('+JSON.stringify(o.id)+')">Update</button>'
-      +'<button class="btn btn-xs btn-ghost" onclick="reprintReceipt('+JSON.stringify(o.id)+')">🖨</button>'
+      +'<button class="btn btn-xs btn-secondary" onclick="openStatusModal('+o.id+')">Update</button>'
+      +'<button class="btn btn-xs btn-ghost" onclick="reprintReceipt('+o.id+')">🖨</button>'
       +'</div></td></tr>';
   }).join('');
 }
@@ -7633,8 +7639,8 @@ function renderSupCustomers(){
     +'<td>'+(c.totalOrders||0)+'</td>'
     +'<td style="font-size:.76rem;">'+fmtDateShort(c.createdAt)+'</td>'
     +'<td><div class="tbl-actions">'
-    +'<button class="btn btn-xs btn-ghost" onclick="editCustomer('+JSON.stringify(c.id)+')">✏️ Edit</button>'
-    +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist('+JSON.stringify(c.id)+')">📋</button>'
+    +'<button class="btn btn-xs btn-ghost" onclick="editCustomer('+c.id+')">✏️ Edit</button>'
+    +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist('+c.id+')">📋</button>'
     +'</div></td></tr>').join('');
 }
 
@@ -7680,7 +7686,7 @@ function renderSupExp(){
     +'<td>'+e.desc+'</td>'
     +'<td><strong>GH₵'+e.amount.toFixed(2)+'</strong></td>'
     +'<td style="font-size:.76rem;">'+(e.loggedBy||'—')+'</td>'
-    +'<td><button class="btn btn-xs btn-danger" onclick="supDelExp('+JSON.stringify(e.id)+')">Del</button></td>'
+    +'<td><button class="btn btn-xs btn-danger" onclick="supDelExp('+e.id+')">Del</button></td>'
     +'</tr>').join('');
 }
 
@@ -7735,7 +7741,7 @@ function renderSupComplaints(){
     +'<td style="font-size:.74rem;">'+branchName(c.branchId)+'</td>'
     +'<td><span class="badge badge-'+(c.status==='resolved'?'collected':'pending')+'">'+c.status+'</span></td>'
     +'<td>'+(c.status==='open'
-      ?'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint('+JSON.stringify(c.id)+')">✅ Resolve</button>'
+      ?'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint('+c.id+')">✅ Resolve</button>'
       :'<span style="font-size:.72rem;color:var(--muted);">By '+(c.resolvedBy||'—')+'</span>')+'</td>'
     +'</tr>').join('');
 }
@@ -7844,7 +7850,7 @@ function supCustSearch(q){
   ).slice(0,6);
   if(!matches.length){dd.innerHTML='';return;}
   dd.innerHTML=matches.map(c=>
-    '<div class="cust-opt" onclick="selectAdminCust('+JSON.stringify(c.id)+')">'+
+    '<div class="cust-opt" onclick="selectAdminCust('+c.id+')">'+
     c.name+' <span style="color:var(--muted);font-size:.8rem;">'+(c.phone||'')+'</span>'+
     (c.notes?'<div style="font-size:.72rem;color:#b36b00;">📌 '+c.notes+'</div>':'')+
     '</div>'
@@ -8185,7 +8191,7 @@ function renderDeletedOrders(){
       +'<td>GH₵'+o.total.toFixed(2)+'</td>'
       +'<td style="font-size:.76rem;">'+( o.deletedBy||'—')+'</td>'
       +'<td style="font-size:.74rem;">'+fmtDateShort(o.deletedAt)+'</td>'
-      +'<td><button class="btn btn-xs btn-secondary" onclick="restoreOrder('+JSON.stringify(o.id)+')">↩ Restore</button></td>'
+      +'<td><button class="btn btn-xs btn-secondary" onclick="restoreOrder('+o.id+')">↩ Restore</button></td>'
       +'</tr>').join('')
     +'</tbody></table></div>'
     :'<div class="empty"><div class="ei">🗑</div><p>No archived orders.</p></div>')
@@ -8687,8 +8693,8 @@ function renderApprovals(){
         +'<div style="font-size:.8rem;color:var(--muted);margin-bottom:4px;">👤 Requested by: <strong>'+r.requestedBy+'</strong></div>'
         +'<div style="font-size:.82rem;background:var(--surface2);padding:8px 10px;border-radius:6px;margin-bottom:10px;">📝 Reason: '+r.reason+'</div>'
         +'<div style="display:flex;gap:8px;">'
-        +'<button class="btn btn-primary btn-sm" style="flex:1;" onclick="approveDelete('+JSON.stringify(r.id)+')">✅ Approve & Delete</button>'
-        +'<button class="btn btn-secondary btn-sm" style="flex:1;" onclick="denyDelete('+JSON.stringify(r.id)+')">❌ Deny</button>'
+        +'<button class="btn btn-primary btn-sm" style="flex:1;" onclick="approveDelete('+r.id+')">✅ Approve & Delete</button>'
+        +'<button class="btn btn-secondary btn-sm" style="flex:1;" onclick="denyDelete('+r.id+')">❌ Deny</button>'
         +'</div></div>';
     }).join('');
   }
