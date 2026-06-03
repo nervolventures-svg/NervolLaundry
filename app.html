@@ -1118,7 +1118,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 
       <!-- LOG EXPENDITURE FORM -->
       <div class="card" style="margin-bottom:14px;">
-        <div class="card-title">💸 Log Expenditure</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="card-title" style="margin:0;">💸 Log Expenditure</div>
+            <button class="btn btn-xs btn-ghost" onclick="openManageExpCats()">📂 Manage Categories</button>
+          </div>
         <div class="form-grid" style="margin-bottom:10px;">
           <div class="fg">
             <label>Branch</label>
@@ -1426,6 +1429,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-page" id="mgr-reports"></div>
       <div class="a-page" id="mgr-analytics"></div>
       <div class="a-page" id="mgr-revenues"></div>
+      <div class="a-page" id="mgr-quote"></div>
       <div class="a-page" id="mgr-debttracker"></div>
       <div class="a-page" id="mgr-promos"></div>
       <div class="a-page" id="mgr-pettycash"></div>
@@ -2094,6 +2098,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
           </table></div>
         </div>
       </div>
+      <div class="a-page" id="ap-quote"></div>
       <div class="a-page" id="ap-debttracker">
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -2884,6 +2889,7 @@ async function saveSettings(){
       globalDiscount:DB.globalDiscount||{active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''},
       deleteRequests:DB.deleteRequests||[],
       complaints:DB.complaints||[],
+      expCategories:DB.expCategories||[],
       riderTrips:DB.riderTrips||[],
       pettyCash:DB.pettyCash||[],
       floats:DB.floats||[],
@@ -3057,6 +3063,7 @@ async function load(){
       DB.globalDiscount=s.globalDiscount||{active:false,pct:0,label:'',startDate:'',endDate:'',maxOrders:0,usedCount:0,createdBy:'',createdAt:''};
       DB.deleteRequests=s.deleteRequests||[];
       DB.complaints=s.complaints||[];
+      DB.expCategories=s.expCategories||[];
       DB.riderTrips=s.riderTrips||[];
       DB.pettyCash=s.pettyCash||[];
       DB.floats=s.floats||[];
@@ -3516,6 +3523,7 @@ function initSExpForm(){
   }
   const d=new Date().toISOString().split('T')[0];
   const dt=document.getElementById('sExpDate');if(dt&&!dt.value)dt.value=d;
+  populateExpCatSelects();
 }
 
 function renderSExpBody(){
@@ -7768,11 +7776,13 @@ function renderSupShift(){
 // ── SUPERVISOR QUOTE ──────────────────────────────────
 function renderSupQuote(){
   const pg=document.getElementById('sup-quote');if(!pg)return;
-  if(pg.innerHTML.trim()) return;
-  const staffQuote=document.getElementById('sp-quote');
-  if(staffQuote) pg.innerHTML=staffQuote.innerHTML;
-  else pg.innerHTML='<div class="card"><p style="color:var(--muted);">Quote module loading...</p></div>';
-  try{initQuoteForm();}catch(e){}
+  if(!pg.innerHTML.trim()){
+    const src=document.getElementById('sp-quote');
+    if(src) pg.innerHTML=src.innerHTML;
+    else{pg.innerHTML='<div class="card"><p style="color:var(--muted);">Quote module loading...</p></div>';return;}
+  }
+  _quoteContainer=pg;
+  setTimeout(()=>{try{initQuoteForm();calcQuote();}catch(e){console.error('Quote init:',e);}},50);
 }
 
 // ── SUPERVISOR NEW ORDER ──────────────────────────────
@@ -8273,6 +8283,141 @@ function saveEditRevenue(){
   showNotif('Revenue entry updated ✅','ok');
 }
 
+
+// ── QUOTE CONTAINER MANAGEMENT ────────────────────────
+let _quoteContainer = null;
+
+function getQuoteContainer(){
+  // Return the active quote container based on which app is visible
+  const activeApps = [
+    {id:'supervisorApp', page:'sup-quote'},
+    {id:'managerApp', page:'mgr-quote'},
+    {id:'adminApp', page:'ap-quote'},
+    {id:'staffApp', page:'sp-quote'}
+  ];
+  for(const {id, page} of activeApps){
+    const app = document.getElementById(id);
+    if(app && app.classList.contains('active')){
+      const pg = document.getElementById(page);
+      if(pg && pg.innerHTML.trim()) return pg;
+    }
+  }
+  // Fallback to sp-quote
+  return document.getElementById('sp-quote');
+}
+
+function $q(id){
+  const container = _quoteContainer || getQuoteContainer();
+  if(container){
+    const el = container.querySelector('#'+id);
+    if(el) return el;
+  }
+  return document.getElementById(id);
+}
+
+
+// ── QUOTE FOR ADMIN/MANAGER ──────────────────────────
+function renderMgrQuote(){
+  const pg=document.getElementById('mgr-quote');if(!pg)return;
+  if(!pg.innerHTML.trim()){
+    const src=document.getElementById('sp-quote');
+    if(src) pg.innerHTML=src.innerHTML;
+    else{pg.innerHTML='<div class="card"><p style="color:var(--muted);">Quote module loading...</p></div>';return;}
+  }
+  _quoteContainer=pg;
+  setTimeout(()=>{try{initQuoteForm();calcQuote();}catch(e){}},50);
+}
+function renderAdmQuote(){
+  const pg=document.getElementById('ap-quote');if(!pg)return;
+  if(!pg.innerHTML.trim()){
+    const src=document.getElementById('sp-quote');
+    if(src) pg.innerHTML=src.innerHTML;
+    else{pg.innerHTML='<div class="card"><p style="color:var(--muted);">Quote module loading...</p></div>';return;}
+  }
+  _quoteContainer=pg;
+  setTimeout(()=>{try{initQuoteForm();calcQuote();}catch(e){}},50);
+}
+
+
+// ── EXPENSE CATEGORIES ─────────────────────────────────
+const EXP_CAT_DEFAULTS = [
+  'Detergent / Chemicals','Water / Utilities','Rider Fees',
+  'Equipment Maintenance','Staff Allowances','Miscellaneous'
+];
+
+function getExpCats(){
+  return [...EXP_CAT_DEFAULTS, ...(DB.expCategories||[])];
+}
+
+function buildExpCatOptions(selectedVal){
+  return getExpCats().map(c=>
+    '<option value="'+c+'"'+(c===selectedVal?' selected':'')+'>'+c+'</option>'
+  ).join('');
+}
+
+function populateExpCatSelects(selectedVal){
+  ['expCat','sExpCat','supExpCat','editExpCat'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      const cur=el.value||selectedVal||'';
+      el.innerHTML=buildExpCatOptions(cur);
+    }
+  });
+}
+
+function openManageExpCats(){
+  renderExpCatList();
+  openModal('expCatModal');
+}
+
+function renderExpCatList(){
+  const ul=document.getElementById('expCatList');if(!ul)return;
+  const custom=DB.expCategories||[];
+  // Show defaults (undeletable) then custom
+  ul.innerHTML='<div style="margin-bottom:10px;">'
+    +'<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Default Categories</div>'
+    +EXP_CAT_DEFAULTS.map(c=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface);border-radius:6px;margin-bottom:4px;font-size:.84rem;">'
+      +'<span>'+c+'</span>'
+      +'<span style="font-size:.7rem;color:var(--muted);">Default</span>'
+      +'</div>').join('')
+    +'</div>'
+    +(custom.length?'<div>'
+      +'<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Custom Categories</div>'
+      +custom.map((c,i)=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--surface);border-radius:6px;margin-bottom:4px;">'
+        +'<span style="font-size:.84rem;">'+c+'</span>'
+        +'<button class="btn btn-xs btn-danger" onclick="delExpCat('+i+')">✕</button>'
+        +'</div>').join('')
+      +'</div>'
+    :'<div style="color:var(--muted);font-size:.82rem;padding:8px 0;">No custom categories yet.</div>');
+}
+
+function addExpCat(){
+  const inp=document.getElementById('newExpCatInput');
+  if(!inp)return;
+  const name=(inp.value||'').trim();
+  if(!name){showNotif('Enter a category name.','err');return;}
+  if(getExpCats().map(c=>c.toLowerCase()).includes(name.toLowerCase())){
+    showNotif('Category already exists.','err');return;
+  }
+  if(!DB.expCategories)DB.expCategories=[];
+  DB.expCategories.push(name);
+  saveSettings();
+  inp.value='';
+  renderExpCatList();
+  populateExpCatSelects();
+  showNotif('Category "'+name+'" added ✅','ok');
+}
+
+function delExpCat(idx){
+  const cat=DB.expCategories[idx];
+  if(!confirm('Delete category "'+cat+'"? Existing expenses using this category will keep their label.'))return;
+  DB.expCategories.splice(idx,1);
+  saveSettings();
+  renderExpCatList();
+  populateExpCatSelects();
+  showNotif('Category deleted.','ok');
+}
+
 // ── INIT ──
 (async () => {
   await initFirebase();
@@ -8735,7 +8880,7 @@ function denyDelete(id){
 // V5A — QUOTE GENERATOR (Staff)
 // ══════════════════════════════════════════════════════
 function initQuoteForm(){
-  const qwr=document.getElementById('qWeightRows');
+  const qwr=('qWeightRows');
   if(!qwr){setTimeout(initQuoteForm,100);return;}
   // Remove helper text if present
   const hint=qwr.querySelector('p');if(hint)hint.remove();
@@ -8754,7 +8899,7 @@ function addQWeightRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qwr=document.getElementById('qWeightRows');
+  const qwr=('qWeightRows');
   if(qwr)qwr.appendChild(div);
   calcQuote();
 }
@@ -8768,7 +8913,7 @@ function addQSpecialRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qsr=document.getElementById('qSpecialRows');
+  const qsr=('qSpecialRows');
   if(qsr)qsr.appendChild(div);calcQuote();
 }
 
@@ -8782,7 +8927,7 @@ function addQBeddingRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qbr=document.getElementById('qBeddingRows');
+  const qbr=('qBeddingRows');
   if(qbr)qbr.appendChild(div);calcQuote();
 }
 
@@ -8804,9 +8949,9 @@ function calcQuote(){
     const el=document.getElementById('qbs-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
   });
   // Update section badges
-  const sbw=document.getElementById('qsb-w');
-  const sbs=document.getElementById('qsb-s');
-  const sbb=document.getElementById('qsb-b');
+  const sbw=('qsb-w');
+  const sbs=('qsb-s');
+  const sbb=('qsb-b');
   let wT2=0,spT2=0,bdT2=0;
   document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{const kg=parseFloat(r.querySelector('input')?.value)||0;const svc=r.querySelector('select')?.value||'fold';wT2+=kg*(svc==='fold'?DB.weightPricing?.fold||8:DB.weightPricing?.iron||12);});
   document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.specialItems?.find(i=>i.id===pid);if(item)spT2+=item.price*qty;});
@@ -8814,10 +8959,10 @@ function calcQuote(){
   if(sbw)sbw.textContent='GH₵ '+wT2.toFixed(2);
   if(sbs)sbs.textContent='GH₵ '+spT2.toFixed(2);
   if(sbb)sbb.textContent='GH₵ '+bdT2.toFixed(2);
-  const el=document.getElementById('qTotal');if(el)el.textContent='GH₵ '+total.toFixed(2);
+  const el=('qTotal');if(el)el.textContent='GH₵ '+total.toFixed(2);
   // Wire SMS
   const phone=(document.getElementById('q-phone')?.value||'').replace(/\D/g,'');
-  const smsBtn=document.getElementById('qSMSBtn');
+  const smsBtn=('qSMSBtn');
   if(smsBtn&&phone){const msg=buildQuoteMsg(total);smsBtn.href=`sms:+${phone}?body=${encodeURIComponent(msg)}`;}
 }
 function buildQuoteMsg(total){
@@ -8849,7 +8994,7 @@ function buildQuoteMsg(total){
     +NL+NL+'Thank you!';
 }
 function shareQuoteWA(){
-  const el=document.getElementById('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
+  const el=('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
   const phone=normalizePhone(document.getElementById('q-phone')?.value||'');
   const msg=buildQuoteMsg(total);
   if(phone)window.open(waLink(phone,msg),'_blank');
@@ -9059,6 +9204,23 @@ document.addEventListener('click',e=>{
     <div style="display:flex;gap:10px;">
       <button class="btn btn-primary" style="flex:1;" onclick="saveEditRevenue()">💾 Save Changes</button>
       <button class="btn btn-secondary" onclick="closeModal('editRevenueModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- EXPENSE CATEGORIES MODAL -->
+<div class="modal-ov" id="expCatModal" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title">📂 Manage Expense Categories</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Add custom categories for your team to use when logging expenses.</p>
+    <div id="expCatList" style="max-height:280px;overflow-y:auto;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="newExpCatInput" placeholder="New category name e.g. Equipment Purchase" style="flex:1;">
+      <button class="btn btn-primary" onclick="addExpCat()">+ Add</button>
+    </div>
+    <div style="margin-top:14px;text-align:right;">
+      <button class="btn btn-secondary" onclick="closeModal('expCatModal')">Done</button>
     </div>
   </div>
 </div>
