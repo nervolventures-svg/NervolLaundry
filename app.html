@@ -1205,7 +1205,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       </div>
       <div class="o-section">
         <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="qsb-w">GH₵ 0.00</span><span class="chevron">▼</span></div>
-        <div class="o-sec-body open"><div id="qWeightRows"><p style="font-size:.78rem;color:var(--muted);padding:4px 0 6px;">Click + Add to add weight washing items.</p></div><button class="add-row-btn" onclick="addQWeightRow();document.getElementById('qWeightRows').querySelector('p')?.remove()">+ Add Weight Row</button></div>
+        <div class="o-sec-body open"><div id="qWeightRows"><p style="font-size:.78rem;color:var(--muted);padding:4px 0 6px;">Click + Add to add weight washing items.</p></div><button class="add-row-btn" onclick="addQWeightRow()">+ Add Weight Row</button></div>
       </div>
       <div class="o-section">
         <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="qsb-s">GH₵ 0.00</span><span class="chevron">▼</span></div>
@@ -1870,10 +1870,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <!-- EXPENDITURE -->
       <div class="a-page" id="ap-expenditure">
         <div class="card" style="margin-bottom:16px;">
-          <div class="card-title">Log Expenditure</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="card-title" style="margin:0;">Log Expenditure</div>
+            <button class="btn btn-xs btn-ghost" onclick="openManageExpCats()">📂 Manage Categories</button>
+          </div>
           <div class="form-grid g3" style="margin-bottom:10px;">
             <div class="fg"><label>Branch</label><select id="expBranch"></select></div>
-            <div class="fg"><label>Category</label><select id="expCat"><option>Detergent / Chemicals</option><option>Water / Utilities</option><option>Rider Fees</option><option>Equipment Maintenance</option><option>Staff Allowances</option><option>Miscellaneous</option></select></div>
+            <div class="fg"><label>Category</label><select id="expCat"></select></div>
             <div class="fg"><label>Description</label><input type="text" id="expDesc" placeholder="e.g. Omo 5kg"></div>
           </div>
           <div class="form-grid" style="max-width:400px;margin-bottom:10px;">
@@ -2778,6 +2781,7 @@ const DEF = {
   },
   deleteRequests:[],
   complaints:[],
+  expCategories:[],
   riderTrips:[],
   pettyCash:[],
   floats:[],
@@ -3378,6 +3382,7 @@ function showSTab(tab,el){
   if(tab==='board')renderBoard();
   if(tab==='shift')renderShift();
   if(tab==='customers')renderStaffCustomers();
+  if(tab==='quote'){_quoteContainer=document.getElementById('sp-quote');}
   if(tab==='quote')initQuoteForm();
   if(tab==='complaints'){initSExpForm();try{renderStaffComplaints();}catch(e){console.error('complaints render:',e);const p=document.getElementById('sp-complaints');if(p)p.innerHTML='<div class="card"><p>Error loading complaints. Please try again.</p></div>';}}
   if(tab==='expenditure'){initSExpForm();renderSExpBody();const lbl=document.getElementById('sExpBranchLabel');if(lbl)lbl.textContent=branchName(CU._loginBranch);}
@@ -4583,6 +4588,8 @@ function launchAdmin(){
   if(supBranch)supBranch.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   startClock('aClock');
   checkOverdue();
+  // Populate dynamic expense category selects
+  setTimeout(()=>populateExpCatSelects(),500);
   updateSupplyDashAlert();
   updateApprovalsBadge();
   const _initToday=new Date().toISOString().split('T')[0];
@@ -8880,11 +8887,10 @@ function denyDelete(id){
 // V5A — QUOTE GENERATOR (Staff)
 // ══════════════════════════════════════════════════════
 function initQuoteForm(){
-  const qwr=('qWeightRows');
+  const qc=_quoteContainer||document.getElementById('sp-quote')||document;
+  const qwr=qc.querySelector('#qWeightRows');
   if(!qwr){setTimeout(initQuoteForm,100);return;}
-  // Remove helper text if present
   const hint=qwr.querySelector('p');if(hint)hint.remove();
-  // Always ensure at least one row exists
   if(qwr.children.length===0) addQWeightRow();
   calcQuote();
 }
@@ -8899,7 +8905,7 @@ function addQWeightRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qwr=('qWeightRows');
+  const qwr=(_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#qWeightRows');
   if(qwr)qwr.appendChild(div);
   calcQuote();
 }
@@ -8913,7 +8919,7 @@ function addQSpecialRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qsr=('qSpecialRows');
+  const qsr=(_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#qSpecialRows');
   if(qsr)qsr.appendChild(div);calcQuote();
 }
 
@@ -8927,43 +8933,40 @@ function addQBeddingRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qbr=('qBeddingRows');
+  const qbr=(_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#qBeddingRows');
   if(qbr)qbr.appendChild(div);calcQuote();
 }
 
 function calcQuote(){
+  const qc=_quoteContainer||document.getElementById('sp-quote')||document;
   let total=0;
-  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{
-    const svc=r.querySelector('select').value;const kg=parseFloat(r.querySelector('input').value)||0;
-    const rate=svc==='fold'?DB.weightPricing.fold:DB.weightPricing.iron;const sub=kg*rate;total+=sub;
-    const el=document.getElementById('qws-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
+  qc.querySelectorAll('#qWeightRows .w-row').forEach(r=>{
+    const sel=r.querySelector('select');const inp=r.querySelector('input[type=number],input:not([type])');
+    if(!sel||!inp)return;
+    const svc=sel.value;const kg=parseFloat(inp.value)||0;
+    const rate=svc==='fold'?(DB.weightPricing?.fold||8):(DB.weightPricing?.iron||10);
+    const sub=kg*rate;total+=sub;
+    const wsb=r.querySelector('.w-sub');if(wsb)wsb.textContent='GH₵'+sub.toFixed(2);
   });
-  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{
-    const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;
-    const item=DB.specialItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;total+=sub;
-    const el=document.getElementById('qss-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
+  const wsub=qc.querySelector('#qsb-w');if(wsub)wsub.textContent='GH₵'+total.toFixed(2);
+  let spTotal=0;
+  qc.querySelectorAll('#qSpecialRows .sp-row').forEach(r=>{
+    const qty=parseFloat(r.querySelector('.sp-qty')?.value)||0;
+    const rate=parseFloat(r.querySelector('.sp-rate')?.value)||0;
+    const sub=qty*rate;spTotal+=sub;
+    const ssb=r.querySelector('.sp-sub');if(ssb)ssb.textContent='GH₵'+sub.toFixed(2);
   });
-  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{
-    const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;
-    const item=DB.beddingItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;total+=sub;
-    const el=document.getElementById('qbs-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
+  const ssub=qc.querySelector('#qsb-s');if(ssub)ssub.textContent='GH₵'+spTotal.toFixed(2);
+  let bdTotal=0;
+  qc.querySelectorAll('#qBeddingRows .bd-row').forEach(r=>{
+    const qty=parseFloat(r.querySelector('.bd-qty')?.value)||0;
+    const rate=parseFloat(r.querySelector('.bd-rate')?.value)||0;
+    const sub=qty*rate;bdTotal+=sub;
+    const bsb=r.querySelector('.bd-sub');if(bsb)bsb.textContent='GH₵'+sub.toFixed(2);
   });
-  // Update section badges
-  const sbw=('qsb-w');
-  const sbs=('qsb-s');
-  const sbb=('qsb-b');
-  let wT2=0,spT2=0,bdT2=0;
-  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{const kg=parseFloat(r.querySelector('input')?.value)||0;const svc=r.querySelector('select')?.value||'fold';wT2+=kg*(svc==='fold'?DB.weightPricing?.fold||8:DB.weightPricing?.iron||12);});
-  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.specialItems?.find(i=>i.id===pid);if(item)spT2+=item.price*qty;});
-  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.beddingItems?.find(i=>i.id===pid);if(item)bdT2+=item.price*qty;});
-  if(sbw)sbw.textContent='GH₵ '+wT2.toFixed(2);
-  if(sbs)sbs.textContent='GH₵ '+spT2.toFixed(2);
-  if(sbb)sbb.textContent='GH₵ '+bdT2.toFixed(2);
-  const el=('qTotal');if(el)el.textContent='GH₵ '+total.toFixed(2);
-  // Wire SMS
-  const phone=(document.getElementById('q-phone')?.value||'').replace(/\D/g,'');
-  const smsBtn=('qSMSBtn');
-  if(smsBtn&&phone){const msg=buildQuoteMsg(total);smsBtn.href=`sms:+${phone}?body=${encodeURIComponent(msg)}`;}
+  const bsub=qc.querySelector('#qsb-b');if(bsub)bsub.textContent='GH₵'+bdTotal.toFixed(2);
+  const grand=total+spTotal+bdTotal;
+  const tel=qc.querySelector('#qTotal');if(tel)tel.textContent='GH₵'+grand.toFixed(2);
 }
 function buildQuoteMsg(total){
   const name=(document.getElementById('q-cname')?.value||'').trim();
@@ -8995,7 +8998,7 @@ function buildQuoteMsg(total){
 }
 function shareQuoteWA(){
   const el=('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
-  const phone=normalizePhone(document.getElementById('q-phone')?.value||'');
+  const phone=normalizePhone((_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#q-phone')?.value||'');
   const msg=buildQuoteMsg(total);
   if(phone)window.open(waLink(phone,msg),'_blank');
   else if(navigator.clipboard)navigator.clipboard.writeText(msg).then(()=>showNotif('Quote copied!','ok'));
