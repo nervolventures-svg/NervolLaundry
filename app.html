@@ -1205,7 +1205,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       </div>
       <div class="o-section">
         <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>⚖️</span><span>Weight Washing</span><span class="sec-badge" id="qsb-w">GH₵ 0.00</span><span class="chevron">▼</span></div>
-        <div class="o-sec-body open"><div id="qWeightRows"><p style="font-size:.78rem;color:var(--muted);padding:4px 0 6px;">Click + Add to add weight washing items.</p></div><button class="add-row-btn" onclick="addQWeightRow()">+ Add Weight Row</button></div>
+        <div class="o-sec-body open"><div id="qWeightRows"><p style="font-size:.78rem;color:var(--muted);padding:4px 0 6px;">Click + Add to add weight washing items.</p></div><button class="add-row-btn" onclick="addQWeightRow();document.getElementById('qWeightRows').querySelector('p')?.remove()">+ Add Weight Row</button></div>
       </div>
       <div class="o-section">
         <div class="o-sec-hdr open" onclick="toggleSec(this)"><span>✨</span><span>Special Items</span><span class="sec-badge" id="qsb-s">GH₵ 0.00</span><span class="chevron">▼</span></div>
@@ -1345,6 +1345,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-item" onclick="showMgrPage('neworder',this)"><span class="ic">➕</span> <strong>New Order</strong></div>
       <div class="a-nav-item" onclick="showMgrPage('orders',this)"><span class="ic">📋</span> All Orders <span class="n-badge" id="mgrOverdueBadge" style="display:none">!</span></div>
       <div class="a-nav-item" onclick="showMgrPage('customers',this)"><span class="ic">👤</span> Customers</div>
+      <div class="a-nav-item" onclick="showMgrPage('quote',this)"><span class="ic">💬</span> Quote</div>
       <div class="a-nav-sep"></div>
       <div class="a-nav-item" onclick="showMgrPage('pricing',this)"><span class="ic">💰</span> Pricing</div>
       <div class="a-nav-item" onclick="showMgrPage('expenditure',this)"><span class="ic">💸</span> Expenditure</div>
@@ -1453,6 +1454,7 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <div class="a-nav-item active" onclick="showAPage('dashboard',this)"><span class="ic">📊</span> Dashboard</div>
       <div class="a-nav-item" onclick="showAPage('orders',this)"><span class="ic">📋</span> All Orders <span class="n-badge" id="overdueNav" style="display:none">!</span></div>
       <div class="a-nav-item" onclick="showAPage('customers',this)"><span class="ic">👤</span> Customers</div>
+      <div class="a-nav-item" onclick="showAPage('quote',this)"><span class="ic">💬</span> Quote</div>
       <div class="a-nav-item" onclick="showAPage('neworder',this)" style="border:2px solid var(--accent);border-radius:8px;margin-bottom:4px;">
         <span class="ic">➕</span> <strong style="color:var(--accent);">New Order</strong>
       </div>
@@ -1870,13 +1872,10 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
       <!-- EXPENDITURE -->
       <div class="a-page" id="ap-expenditure">
         <div class="card" style="margin-bottom:16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="card-title" style="margin:0;">Log Expenditure</div>
-            <button class="btn btn-xs btn-ghost" onclick="openManageExpCats()">📂 Manage Categories</button>
-          </div>
+          <div class="card-title">Log Expenditure</div>
           <div class="form-grid g3" style="margin-bottom:10px;">
             <div class="fg"><label>Branch</label><select id="expBranch"></select></div>
-            <div class="fg"><label>Category</label><select id="expCat"></select></div>
+            <div class="fg"><label>Category</label><select id="expCat"><option>Detergent / Chemicals</option><option>Water / Utilities</option><option>Rider Fees</option><option>Equipment Maintenance</option><option>Staff Allowances</option><option>Miscellaneous</option></select></div>
             <div class="fg"><label>Description</label><input type="text" id="expDesc" placeholder="e.g. Omo 5kg"></div>
           </div>
           <div class="form-grid" style="max-width:400px;margin-bottom:10px;">
@@ -2781,7 +2780,6 @@ const DEF = {
   },
   deleteRequests:[],
   complaints:[],
-  expCategories:[],
   riderTrips:[],
   pettyCash:[],
   floats:[],
@@ -3382,7 +3380,6 @@ function showSTab(tab,el){
   if(tab==='board')renderBoard();
   if(tab==='shift')renderShift();
   if(tab==='customers')renderStaffCustomers();
-  if(tab==='quote'){_quoteContainer=document.getElementById('sp-quote');}
   if(tab==='quote')initQuoteForm();
   if(tab==='complaints'){initSExpForm();try{renderStaffComplaints();}catch(e){console.error('complaints render:',e);const p=document.getElementById('sp-complaints');if(p)p.innerHTML='<div class="card"><p>Error loading complaints. Please try again.</p></div>';}}
   if(tab==='expenditure'){initSExpForm();renderSExpBody();const lbl=document.getElementById('sExpBranchLabel');if(lbl)lbl.textContent=branchName(CU._loginBranch);}
@@ -4588,8 +4585,6 @@ function launchAdmin(){
   if(supBranch)supBranch.innerHTML=DB.branches.filter(b=>b.active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   startClock('aClock');
   checkOverdue();
-  // Populate dynamic expense category selects
-  setTimeout(()=>populateExpCatSelects(),500);
   updateSupplyDashAlert();
   updateApprovalsBadge();
   const _initToday=new Date().toISOString().split('T')[0];
@@ -4671,6 +4666,7 @@ function showAPage(page,el){
     if(page==='auditlog'){try{renderAuditLog();}catch(e){}}
     if(page==='loginlogs'){renderLoginLogs();}
     if(page==='deletedorders'){renderDeletedOrders();}
+    if(page==='quote'){renderAdmQuote();}
   }catch(e){console.error('showAPage:',page,e);}
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
@@ -6343,7 +6339,7 @@ function showMgrPage(page, el){
   } else {
     // Activate matching admin page
     const apPg=document.getElementById('ap-'+page);
-    if(apPg)apPg.classList.add('active');
+    if(apPg&&page!=='quote')apPg.classList.add('active');
     if(page==='orders')renderAOrders();
     else if(page==='customers')renderCustomers();
     else if(page==='pricing'){renderPricingPanel();updateExpressMultDisplay();}
@@ -6382,6 +6378,7 @@ function showMgrPage(page, el){
     }
     else if(page==='approvals')renderApprovals();
     else if(page==='revenues'){renderRevenuesPage('mgr-revenues');}
+    else if(page==='quote'){const qp=document.getElementById('mgr-quote');if(qp)qp.classList.add('active');renderMgrQuote();}
     else if(page==='supplies')renderSupplies();
   }
 }
@@ -6401,7 +6398,7 @@ function renderMgrDashboard(){
   const periodOrders=DB.orders.filter(o=>{const d=new Date(o.createdAt);return d>=from&&d<=to;});
   const todayOrders=periodOrders; // alias for compatibility
   const rev=todayOrders.filter(o=>o.payStatus==='paid'||o.payStatus==='partial').reduce((s,o)=>s+(o.payStatus==='paid'?o.total:(o.depositPaid||0)),0);
-  const exp=DB.expenditures.filter(e=>new Date(e.createdAt).toDateString()===today).reduce((s,e)=>s+e.amount,0);
+  const exp=DB.expenditures.filter(e=>{const d=new Date(e.createdAt);return d>=from&&d<=to;}).reduce((s,e)=>s+e.amount,0);
   const active=DB.orders.filter(o=>['pending','washing','ready'].includes(o.status)).length;
   const overdue=DB.orders.filter(o=>isOverdue(o)).length;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -7545,14 +7542,14 @@ function renderSupDashboard(){
   const recentRows=branchOrders.slice(0,8).map(o=>'<tr><td class="oid" style="font-size:.72rem;">'+o.id+'</td>'
     +'<td>'+o.customerName+'</td><td style="font-size:.74rem;">'+branchName(o.branchId)+'</td>'
     +'<td>'+statusBadge(o.status)+'</td>'
-    +'<td><button class="btn btn-xs btn-secondary" onclick="openStatusModal('+o.id+')">Update</button></td></tr>').join('')
+    +'<td><button class="btn btn-xs btn-secondary" onclick="openStatusModal(\''+o.id+'\')">Update</button></td></tr>').join('')
     ||'<tr><td colspan="5"><div class="empty"><div class="ei">🧺</div><p>No orders.</p></div></td></tr>';
 
   // Build open complaints rows safely
   const compRows=openComps.slice(0,5).map(c=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">'
     +'<div><div style="font-size:.84rem;font-weight:600;">'+c.customerName+'</div>'
     +'<div style="font-size:.74rem;color:var(--muted);">'+c.type+' · '+(c.description||'').slice(0,40)+'</div></div>'
-    +'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint('+c.id+')">✅ Resolve</button></div>').join('');
+    +'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint(\''+c.id+'\')">✅ Resolve</button></div>').join('');
 
   // Build expenses rows
   const expRows=todayExp.map(e=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem;">'
@@ -7622,8 +7619,8 @@ function renderSupOrders(){
       +'<td>'+statusBadge(o.status)+'</td>'
       +'<td style="font-size:.76rem;">'+fmtDateShort(o.createdAt)+'</td>'
       +'<td><div class="tbl-actions">'
-      +'<button class="btn btn-xs btn-secondary" onclick="openStatusModal('+o.id+')">Update</button>'
-      +'<button class="btn btn-xs btn-ghost" onclick="reprintReceipt('+o.id+')">🖨</button>'
+      +'<button class="btn btn-xs btn-secondary" onclick="openStatusModal(\''+o.id+'\')">Update</button>'
+      +'<button class="btn btn-xs btn-ghost" onclick="reprintReceipt(\''+o.id+'\')">🖨</button>'
       +'</div></td></tr>';
   }).join('');
 }
@@ -7654,8 +7651,8 @@ function renderSupCustomers(){
     +'<td>'+(c.totalOrders||0)+'</td>'
     +'<td style="font-size:.76rem;">'+fmtDateShort(c.createdAt)+'</td>'
     +'<td><div class="tbl-actions">'
-    +'<button class="btn btn-xs btn-ghost" onclick="editCustomer('+c.id+')">✏️ Edit</button>'
-    +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist('+c.id+')">📋</button>'
+    +'<button class="btn btn-xs btn-ghost" onclick="editCustomer(\''+c.id+'\')">✏️ Edit</button>'
+    +'<button class="btn btn-xs btn-secondary" onclick="adminViewCustHist(\''+c.id+'\')">📋</button>'
     +'</div></td></tr>').join('');
 }
 
@@ -7701,7 +7698,7 @@ function renderSupExp(){
     +'<td>'+e.desc+'</td>'
     +'<td><strong>GH₵'+e.amount.toFixed(2)+'</strong></td>'
     +'<td style="font-size:.76rem;">'+(e.loggedBy||'—')+'</td>'
-    +'<td><button class="btn btn-xs btn-danger" onclick="supDelExp('+e.id+')">Del</button></td>'
+    +'<td><button class="btn btn-xs btn-danger" onclick="supDelExp(\''+e.id+'\')">Del</button></td>'
     +'</tr>').join('');
 }
 
@@ -7756,7 +7753,7 @@ function renderSupComplaints(){
     +'<td style="font-size:.74rem;">'+branchName(c.branchId)+'</td>'
     +'<td><span class="badge badge-'+(c.status==='resolved'?'collected':'pending')+'">'+c.status+'</span></td>'
     +'<td>'+(c.status==='open'
-      ?'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint('+c.id+')">✅ Resolve</button>'
+      ?'<button class="btn btn-xs btn-primary" onclick="supResolveComplaint(\''+c.id+'\')">✅ Resolve</button>'
       :'<span style="font-size:.72rem;color:var(--muted);">By '+(c.resolvedBy||'—')+'</span>')+'</td>'
     +'</tr>').join('');
 }
@@ -7867,7 +7864,7 @@ function supCustSearch(q){
   ).slice(0,6);
   if(!matches.length){dd.innerHTML='';return;}
   dd.innerHTML=matches.map(c=>
-    '<div class="cust-opt" onclick="selectAdminCust('+c.id+')">'+
+    '<div class="cust-opt" onclick="selectAdminCust(\''+c.id+'\')">'+
     c.name+' <span style="color:var(--muted);font-size:.8rem;">'+(c.phone||'')+'</span>'+
     (c.notes?'<div style="font-size:.72rem;color:#b36b00;">📌 '+c.notes+'</div>':'')+
     '</div>'
@@ -8208,7 +8205,7 @@ function renderDeletedOrders(){
       +'<td>GH₵'+o.total.toFixed(2)+'</td>'
       +'<td style="font-size:.76rem;">'+( o.deletedBy||'—')+'</td>'
       +'<td style="font-size:.74rem;">'+fmtDateShort(o.deletedAt)+'</td>'
-      +'<td><button class="btn btn-xs btn-secondary" onclick="restoreOrder('+o.id+')">↩ Restore</button></td>'
+      +'<td><button class="btn btn-xs btn-secondary" onclick="restoreOrder(\''+o.id+'\')">↩ Restore</button></td>'
       +'</tr>').join('')
     +'</tbody></table></div>'
     :'<div class="empty"><div class="ei">🗑</div><p>No archived orders.</p></div>')
@@ -8845,8 +8842,8 @@ function renderApprovals(){
         +'<div style="font-size:.8rem;color:var(--muted);margin-bottom:4px;">👤 Requested by: <strong>'+r.requestedBy+'</strong></div>'
         +'<div style="font-size:.82rem;background:var(--surface2);padding:8px 10px;border-radius:6px;margin-bottom:10px;">📝 Reason: '+r.reason+'</div>'
         +'<div style="display:flex;gap:8px;">'
-        +'<button class="btn btn-primary btn-sm" style="flex:1;" onclick="approveDelete('+r.id+')">✅ Approve & Delete</button>'
-        +'<button class="btn btn-secondary btn-sm" style="flex:1;" onclick="denyDelete('+r.id+')">❌ Deny</button>'
+        +'<button class="btn btn-primary btn-sm" style="flex:1;" onclick="approveDelete(\''+r.id+'\')">✅ Approve & Delete</button>'
+        +'<button class="btn btn-secondary btn-sm" style="flex:1;" onclick="denyDelete(\''+r.id+'\')">❌ Deny</button>'
         +'</div></div>';
     }).join('');
   }
@@ -8887,10 +8884,11 @@ function denyDelete(id){
 // V5A — QUOTE GENERATOR (Staff)
 // ══════════════════════════════════════════════════════
 function initQuoteForm(){
-  const qc=_quoteContainer||document.getElementById('sp-quote')||document;
-  const qwr=qc.querySelector('#qWeightRows');
+  const qwr=$q('qWeightRows');
   if(!qwr){setTimeout(initQuoteForm,100);return;}
+  // Remove helper text if present
   const hint=qwr.querySelector('p');if(hint)hint.remove();
+  // Always ensure at least one row exists
   if(qwr.children.length===0) addQWeightRow();
   calcQuote();
 }
@@ -8905,7 +8903,7 @@ function addQWeightRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qwr=(_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#qWeightRows');
+  const qwr=$q('qWeightRows');
   if(qwr)qwr.appendChild(div);
   calcQuote();
 }
@@ -8919,7 +8917,7 @@ function addQSpecialRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qsr=(_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#qSpecialRows');
+  const qsr=$q('qSpecialRows');
   if(qsr)qsr.appendChild(div);calcQuote();
 }
 
@@ -8933,40 +8931,43 @@ function addQBeddingRow(){
   const rmBtn=document.createElement('button');rmBtn.className='rm-btn';rmBtn.textContent='✕';
   rmBtn.onclick=function(){div.remove();calcQuote();};
   div.appendChild(rmBtn);
-  const qbr=(_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#qBeddingRows');
+  const qbr=$q('qBeddingRows');
   if(qbr)qbr.appendChild(div);calcQuote();
 }
 
 function calcQuote(){
-  const qc=_quoteContainer||document.getElementById('sp-quote')||document;
   let total=0;
-  qc.querySelectorAll('#qWeightRows .w-row').forEach(r=>{
-    const sel=r.querySelector('select');const inp=r.querySelector('input[type=number],input:not([type])');
-    if(!sel||!inp)return;
-    const svc=sel.value;const kg=parseFloat(inp.value)||0;
-    const rate=svc==='fold'?(DB.weightPricing?.fold||8):(DB.weightPricing?.iron||10);
-    const sub=kg*rate;total+=sub;
-    const wsb=r.querySelector('.w-sub');if(wsb)wsb.textContent='GH₵'+sub.toFixed(2);
+  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{
+    const svc=r.querySelector('select').value;const kg=parseFloat(r.querySelector('input').value)||0;
+    const rate=svc==='fold'?DB.weightPricing.fold:DB.weightPricing.iron;const sub=kg*rate;total+=sub;
+    const el=document.getElementById('qws-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
   });
-  const wsub=qc.querySelector('#qsb-w');if(wsub)wsub.textContent='GH₵'+total.toFixed(2);
-  let spTotal=0;
-  qc.querySelectorAll('#qSpecialRows .sp-row').forEach(r=>{
-    const qty=parseFloat(r.querySelector('.sp-qty')?.value)||0;
-    const rate=parseFloat(r.querySelector('.sp-rate')?.value)||0;
-    const sub=qty*rate;spTotal+=sub;
-    const ssb=r.querySelector('.sp-sub');if(ssb)ssb.textContent='GH₵'+sub.toFixed(2);
+  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{
+    const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;
+    const item=DB.specialItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;total+=sub;
+    const el=document.getElementById('qss-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
   });
-  const ssub=qc.querySelector('#qsb-s');if(ssub)ssub.textContent='GH₵'+spTotal.toFixed(2);
-  let bdTotal=0;
-  qc.querySelectorAll('#qBeddingRows .bd-row').forEach(r=>{
-    const qty=parseFloat(r.querySelector('.bd-qty')?.value)||0;
-    const rate=parseFloat(r.querySelector('.bd-rate')?.value)||0;
-    const sub=qty*rate;bdTotal+=sub;
-    const bsb=r.querySelector('.bd-sub');if(bsb)bsb.textContent='GH₵'+sub.toFixed(2);
+  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{
+    const pid=r.querySelector('select').value;const qty=parseInt(r.querySelector('input').value)||1;
+    const item=DB.beddingItems.find(i=>i.id===pid);const sub=item?item.price*qty:0;total+=sub;
+    const el=document.getElementById('qbs-'+r.id);if(el)el.textContent=`GH₵${sub.toFixed(2)}`;
   });
-  const bsub=qc.querySelector('#qsb-b');if(bsub)bsub.textContent='GH₵'+bdTotal.toFixed(2);
-  const grand=total+spTotal+bdTotal;
-  const tel=qc.querySelector('#qTotal');if(tel)tel.textContent='GH₵'+grand.toFixed(2);
+  // Update section badges
+  const sbw=$q('qsb-w');
+  const sbs=$q('qsb-s');
+  const sbb=$q('qsb-b');
+  let wT2=0,spT2=0,bdT2=0;
+  document.querySelectorAll('#qWeightRows .w-row').forEach(r=>{const kg=parseFloat(r.querySelector('input')?.value)||0;const svc=r.querySelector('select')?.value||'fold';wT2+=kg*(svc==='fold'?DB.weightPricing?.fold||8:DB.weightPricing?.iron||12);});
+  document.querySelectorAll('#qSpecialRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.specialItems?.find(i=>i.id===pid);if(item)spT2+=item.price*qty;});
+  document.querySelectorAll('#qBeddingRows .i-row').forEach(r=>{const pid=r.querySelector('select')?.value;const qty=parseInt(r.querySelector('input')?.value)||1;const item=DB.beddingItems?.find(i=>i.id===pid);if(item)bdT2+=item.price*qty;});
+  if(sbw)sbw.textContent='GH₵ '+wT2.toFixed(2);
+  if(sbs)sbs.textContent='GH₵ '+spT2.toFixed(2);
+  if(sbb)sbb.textContent='GH₵ '+bdT2.toFixed(2);
+  const el=$q('qTotal');if(el)el.textContent='GH₵ '+total.toFixed(2);
+  // Wire SMS
+  const phone=(document.getElementById('q-phone')?.value||'').replace(/\D/g,'');
+  const smsBtn=$q('qSMSBtn');
+  if(smsBtn&&phone){const msg=buildQuoteMsg(total);smsBtn.href=`sms:+${phone}?body=${encodeURIComponent(msg)}`;}
 }
 function buildQuoteMsg(total){
   const name=(document.getElementById('q-cname')?.value||'').trim();
@@ -8997,8 +8998,8 @@ function buildQuoteMsg(total){
     +NL+NL+'Thank you!';
 }
 function shareQuoteWA(){
-  const el=('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
-  const phone=normalizePhone((_quoteContainer||document.getElementById('sp-quote')||document).querySelector('#q-phone')?.value||'');
+  const el=$q('qTotal');const total=parseFloat(el?.textContent?.replace('GH₵','')||'0')||0;
+  const phone=normalizePhone(document.getElementById('q-phone')?.value||'');
   const msg=buildQuoteMsg(total);
   if(phone)window.open(waLink(phone,msg),'_blank');
   else if(navigator.clipboard)navigator.clipboard.writeText(msg).then(()=>showNotif('Quote copied!','ok'));
