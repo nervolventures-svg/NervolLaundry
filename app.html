@@ -713,9 +713,6 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
 <div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#c94a1a;color:#fff;padding:8px 16px;font-size:.82rem;text-align:center;"></div>
 
 <div id="syncBar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99998;background:var(--accent);color:#fff;text-align:center;padding:6px;font-size:.78rem;font-weight:600;">🔄 Syncing...</div>
-<div id="offlineBanner" style="display:none;background:#d97706;color:#fff;text-align:center;padding:7px;font-size:.8rem;font-weight:600;position:fixed;top:0;left:0;right:0;z-index:99999;">
-  📴 Offline Mode — using local data. Open on <strong>nervollaundry.vercel.app</strong> for full sync.
-</div>
 
 <!-- ═══════════ LOGIN ═══════════ -->
 <div id="loginScreen">
@@ -3099,6 +3096,20 @@ async function load(){
     const shSnap=await getDocs(collection(db,'shifts'));
     if(!shSnap.empty){DB.shifts=[];shSnap.forEach(d=>DB.shifts.push(d.data()));DB.shifts.sort((a,b)=>new Date(b.date)-new Date(a.date));}
 
+    // Complaints — merge customer-portal complaints (top-level collection,
+    // written by check.html) with internal complaints (settings.config.complaints).
+    // Dedup by id; collection copy is authoritative for portal-sourced entries.
+    try{
+      const compSnap=await getDocs(collection(db,'complaints'));
+      if(!compSnap.empty){
+        DB.complaints=DB.complaints||[];
+        const byId={};
+        DB.complaints.forEach(c=>{if(c&&c.id)byId[c.id]=c;});
+        compSnap.forEach(d=>{const c=d.data();if(c&&c.id)byId[c.id]=c;});
+        DB.complaints=Object.values(byId).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+      }
+    }catch(e){console.error('Complaints load:',e);}
+
     // 3. First-run seed: if Firestore empty OR DB still empty, write defaults
     const needsSeed=(!uSnap.exists()&&!bSnap.exists())||!DB.users.length||!DB.branches.length;
     if(needsSeed){
@@ -3321,6 +3332,26 @@ function doLogin(){
   else if(u.role==='manager') launchManager();
   else if(u.role==='supervisor'||(u.role==='staff'&&u.roleLabel==='Supervisor')) launchSupervisor();
   else launchStaff();
+  handleLaunchShortcut(u);
+}
+// Handle PWA manifest shortcuts, e.g. /app?shortcut=neworder should jump
+// straight to the New Order screen for whichever role just logged in.
+function handleLaunchShortcut(u){
+  try{
+    const sc=new URLSearchParams(window.location.search).get('shortcut');
+    if(!sc) return;
+    if(sc==='neworder'){
+      const r=u.role, lbl=u.roleLabel;
+      setTimeout(()=>{
+        try{
+          if(r==='admin'||r==='coadmin') showAPage('neworder');
+          else if(r==='manager') showMgrPage('neworder');
+          else if(r==='supervisor'||(r==='staff'&&lbl==='Supervisor')) showSupPage('neworder');
+          else showSTab('neworder');
+        }catch(e){console.error('Shortcut nav:',e);}
+      },300);
+    }
+  }catch(e){console.error('Shortcut parse:',e);}
 }
 function toggleMode(){
   loginMode=loginMode==='staff'?'admin':'staff';
@@ -3381,7 +3412,7 @@ function showSTab(tab,el){
   if(tab==='shift')renderShift();
   if(tab==='customers')renderStaffCustomers();
   if(tab==='quote')initQuoteForm();
-  if(tab==='complaints'){initSExpForm();try{renderStaffComplaints();}catch(e){console.error('complaints render:',e);const p=document.getElementById('sp-complaints');if(p)p.innerHTML='<div class="card"><p>Error loading complaints. Please try again.</p></div>';}}
+  if(tab==='complaints'){initSExpForm();try{renderStaffComplaints();fetchPortalComplaints().then(changed=>{if(changed)renderStaffComplaints();});}catch(e){console.error('complaints render:',e);const p=document.getElementById('sp-complaints');if(p)p.innerHTML='<div class="card"><p>Error loading complaints. Please try again.</p></div>';}}
   if(tab==='expenditure'){initSExpForm();renderSExpBody();const lbl=document.getElementById('sExpBranchLabel');if(lbl)lbl.textContent=branchName(CU._loginBranch);}
   }catch(e){console.error('showSTab:',tab,e);}
 }
@@ -4656,7 +4687,7 @@ function showAPage(page,el){
     if(page==='branches'){try{renderBranches();}catch(e){}}
     if(page==='staff'){try{renderStaff();}catch(e){}}
         if(page==='complaints'){
-      try{renderAdminComplaints();}catch(e){console.error('complaints:',e);}
+      try{openComplaintsPage();}catch(e){console.error('complaints:',e);}
       const cb=document.getElementById('adm-comp-branch');
       if(cb)cb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
     }
@@ -6369,7 +6400,7 @@ function showMgrPage(page, el){
       if(to&&!to.value)to.value=today;
       renderTurnaround();
     }
-    else if(page==='complaints')renderAdminComplaints();
+    else if(page==='complaints')openComplaintsPage();
     else if(page==='ridertrips'){
       renderRiderTrips();
       const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
@@ -6590,7 +6621,7 @@ function renderMgrComplaints(){
   // Populate branch filter
   const cb=document.getElementById('mgr-comp-branch');
   if(cb)cb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-  renderAdminComplaints();
+  openComplaintsPage();
 }
 function mgrLogComplaint(){
   if(!CU){showNotif('Not logged in.','err');return;}
@@ -7763,7 +7794,7 @@ function supResolveComplaint(id){
   if(!c)return;
   if(!confirm('Mark this complaint as resolved?'))return;
   c.status='resolved';c.resolvedBy=CU.name;c.resolvedAt=new Date().toISOString();
-  saveSettings();renderSupComplaints();renderSupDashboard();
+  saveSettings();persistComplaint(c);renderSupComplaints();renderSupDashboard();
   showNotif('Complaint resolved ✅','ok');
 }
 
@@ -8723,6 +8754,36 @@ function staffResolveComplaint(id){
   c.status='resolved';c.resolvedBy=CU.name;c.resolvedAt=new Date().toISOString();
   saveSettings();renderStaffComplaints();showNotif('Complaint resolved.','ok');
 }
+// Pull complaints submitted via the public customer portal (check.html),
+// which writes to the top-level 'complaints' collection. Merge any new
+// ones into DB.complaints (deduped by id) and persist into settings.
+async function fetchPortalComplaints(){
+  if(!fbReady||!window._fb) return false;
+  try{
+    const {collection,getDocs,db:_db}=window._fb;
+    const snap=await getDocs(collection(_db,'complaints'));
+    if(snap.empty) return false;
+    if(!DB.complaints) DB.complaints=[];
+    const existing=new Set(DB.complaints.map(c=>c.id));
+    let added=0;
+    snap.forEach(d=>{
+      const c=d.data();
+      if(c&&c.id&&!existing.has(c.id)){DB.complaints.push(c);existing.add(c.id);added++;}
+    });
+    if(added>0){
+      DB.complaints.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+      saveSettings();
+    }
+    return added>0;
+  }catch(e){console.error('Portal complaints fetch:',e);return false;}
+}
+// Called from nav when the complaints page is opened: render immediately
+// (from cached DB.complaints), then fetch portal complaints and re-render
+// if any new ones arrived.
+function openComplaintsPage(){
+  renderAdminComplaints();
+  fetchPortalComplaints().then(changed=>{if(changed)renderAdminComplaints();});
+}
 function renderAdminComplaints(){
   const tbody=document.getElementById('aCompBody');if(!tbody)return;
   let list=DB.complaints.filter(c=>compFilter==='all'||c.status===compFilter);
@@ -8745,8 +8806,16 @@ function renderAdminComplaints(){
     </td>
   </tr>`).join('');
 }
-function resolveComplaint(id){const c=DB.complaints.find(x=>x.id===id);if(c){c.status='resolved';c.resolvedBy=CU.name;c.resolvedAt=new Date().toISOString();saveSettings();renderAdminComplaints();showNotif('Resolved!','ok');}}
-function delComplaint(id){DB.complaints=DB.complaints.filter(c=>c.id!==id);saveSettings();renderAdminComplaints();showNotif('Deleted.','ok');}
+function resolveComplaint(id){const c=DB.complaints.find(x=>x.id===id);if(c){c.status='resolved';c.resolvedBy=CU.name;c.resolvedAt=new Date().toISOString();saveSettings();persistComplaint(c);renderAdminComplaints();showNotif('Resolved!','ok');}}
+function delComplaint(id){const c=DB.complaints.find(x=>x.id===id);DB.complaints=DB.complaints.filter(c=>c.id!==id);saveSettings();if(c&&c.source==='customer-portal')removeComplaintDoc(id);renderAdminComplaints();showNotif('Deleted.','ok');}
+// Persist a complaint back to the top-level 'complaints' collection (portal-sourced).
+function persistComplaint(c){
+  if(!c||c.source!=='customer-portal')return;
+  try{if(typeof db!=='undefined')db.collection('complaints').doc(c.id).set(c).catch(()=>{});}catch(e){}
+}
+function removeComplaintDoc(id){
+  try{if(typeof db!=='undefined')db.collection('complaints').doc(id).delete().catch(()=>{});}catch(e){}
+}
 
 // ══════════════════════════════════════════════════════
 // V5A — RIDER TRIPS

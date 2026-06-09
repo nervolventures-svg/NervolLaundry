@@ -1,10 +1,11 @@
 // Nervol Laundry Service Worker
 // Provides offline support and faster loading
 
-const CACHE_NAME = 'nervol-laundry-v5a';
+const CACHE_NAME = 'nervol-laundry-v5a-2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/app.html',
   '/check.html',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap'
