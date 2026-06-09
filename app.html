@@ -3161,6 +3161,11 @@ function attachRealtimeListeners(){
       if(document.getElementById('adminApp').classList.contains('active')){
         renderAOrders(); renderDashboard(); checkOverdue();
       }
+      if(document.getElementById('managerApp').classList.contains('active')){
+        try{ if(document.getElementById('mgr-orders').classList.contains('active')) renderAOrders(); }catch(e){}
+        try{ if(document.getElementById('mgr-dashboard').classList.contains('active')) renderMgrDashboard(); }catch(e){}
+        try{ checkOverdue(); }catch(e){}
+      }
     },
     err => console.error('Orders listener:', err)
   );
@@ -3174,6 +3179,9 @@ function attachRealtimeListeners(){
       snap.forEach(d => DB.customers.push(d.data()));
       localSave();
       if(document.getElementById('adminApp').classList.contains('active')) renderCustomers();
+      if(document.getElementById('managerApp').classList.contains('active')){
+        try{ if(document.getElementById('mgr-customers').classList.contains('active')) renderCustomers(); }catch(e){}
+      }
     },
     err => console.error('Customers listener:', err)
   );
@@ -4640,6 +4648,7 @@ function populateAdminBranchFilters(){
 }
 function showAPage(page,el){
   try{
+    clearSharedScope();
     document.querySelectorAll('#adminApp .a-page').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('#adminApp .a-nav-item').forEach(i=>i.classList.remove('active'));
     const aPg=document.getElementById('ap-'+page);if(aPg)aPg.classList.add('active');
@@ -4701,7 +4710,7 @@ function showAPage(page,el){
   }catch(e){console.error('showAPage:',page,e);}
 }
 function onBranchFilterChange(){renderDashboard();renderAOrders();}
-function getBranchFilter(){return document.getElementById('aBranchFilter')?.value||'all';}
+function getBranchFilter(){return ($shared('aBranchFilter')?.value)||'all';}
 
 // ── DASHBOARD ──
 function renderDashboard(){
@@ -4793,7 +4802,7 @@ function renderStatusChart(bf){
 let aoFilter='all';
 function setAOFilter(f,el){aoFilter=f;document.querySelectorAll('#ap-orders .ftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderAOrders();}
 function renderAOrders(){
-  const q=(document.getElementById('aOrderSearch')?.value||'').toLowerCase();
+  const q=($shared('aOrderSearch')?.value||'').toLowerCase();
   const bf=getBranchFilter();
   let orders=DB.orders.filter(o=>{
     const m=o.id.toLowerCase().includes(q)||o.customerName.toLowerCase().includes(q)||(o.customerPhone||'').includes(q);
@@ -4802,7 +4811,7 @@ function renderAOrders(){
     const d=inDateRange(o.createdAt,'aOrderFrom','aOrderTo');
     return m&&bf_&&f&&d;
   });
-  const tbody=document.getElementById('aOrderBody');if(!tbody)return;
+  const tbody=$shared('aOrderBody');if(!tbody)return;
   // Sort
   const _aOrdGetters={id:o=>o.id,customer:o=>o.customerName,branch:o=>branchName(o.branchId),total:o=>o.total,
     payment:o=>o.payStatus,status:o=>o.status,date:o=>o.createdAt};
@@ -4916,9 +4925,9 @@ function adminDeleteCustomer(id, name){
   showNotif(name+' deleted.','ok');
 }
 function renderCustomers(){
-  const q=(document.getElementById('custSearch2')?.value||'').toLowerCase();
+  const q=($shared('custSearch2')?.value||'').toLowerCase();
   let custs=DB.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.phone||'').includes(q));
-  const tbody=document.getElementById('custTableBody');if(!tbody)return;
+  const tbody=$shared('custTableBody');if(!tbody)return;
   const _custGetters={name:c=>c.name,phone:c=>c.phone,orders:c=>c.totalOrders||0,spent:c=>c.totalSpent||0,since:c=>c.createdAt};
   custs=sortData(custs,'custTableBody',_custGetters);
   setTimeout(()=>applySortHeaders('custTableBody'),50);
@@ -5485,8 +5494,8 @@ function clearAOrderDates(){
   renderAOrders();
 }
 function inDateRange(iso, fromId, toId){
-  const from=document.getElementById(fromId)?.value;
-  const to=document.getElementById(toId)?.value;
+  const from=$shared(fromId)?.value;
+  const to=$shared(toId)?.value;
   if(!from&&!to)return true;
   const d=new Date(iso);
   if(from&&d<new Date(from+'T00:00:00'))return false;
@@ -6370,9 +6379,9 @@ function showMgrPage(page, el){
   } else {
     // Activate matching admin page
     const apPg=document.getElementById('ap-'+page);
-    if(apPg&&page!=='quote'&&page!=='revenues')apPg.classList.add('active');
-    if(page==='orders')renderAOrders();
-    else if(page==='customers')renderCustomers();
+    if(apPg&&page!=='quote'&&page!=='revenues'&&page!=='orders'&&page!=='customers')apPg.classList.add('active');
+    if(page==='orders')showSharedMgrPage('orders',renderAOrders);
+    else if(page==='customers')showSharedMgrPage('customers',renderCustomers);
     else if(page==='pricing'){renderPricingPanel();updateExpressMultDisplay();}
     else if(page==='expenditure'){
       const expB=document.getElementById('expBranch');
@@ -7967,6 +7976,39 @@ function getRevContainer(){
   return document.getElementById('ap-revenues')||document;
 }
 function $rev(id){const c=getRevContainer();return (c&&c.querySelector('#'+id))||document.getElementById(id);}
+
+// ── GENERIC SHARED-PAGE SCOPING (manager reuses admin page markup) ──────
+// Admin pages (ap-*) live inside #adminApp. The manager has empty mgr-* divs.
+// On first open we clone the admin markup into the manager div, which
+// duplicates element ids. Render functions that call getElementById would hit
+// the admin copy (first in DOM, inside the hidden admin app), so the manager
+// would see a blank page. These helpers let render functions resolve ids
+// within the currently-active container instead.
+let _sharedContainer = null;
+function $shared(id){
+  if(_sharedContainer){const el=_sharedContainer.querySelector('#'+id);if(el)return el;}
+  return document.getElementById(id);
+}
+function $sharedAll(sel){
+  if(_sharedContainer){const els=_sharedContainer.querySelectorAll(sel);if(els&&els.length)return els;}
+  return document.querySelectorAll(sel);
+}
+// Clone admin page markup into the manager container, activate it, scope, render.
+function showSharedMgrPage(page, renderFn){
+  const mgrPg=document.getElementById('mgr-'+page);
+  const adminPg=document.getElementById('ap-'+page);
+  if(mgrPg&&adminPg){
+    if(!mgrPg.innerHTML.trim()) mgrPg.innerHTML=adminPg.innerHTML;
+    mgrPg.classList.add('active');
+    _sharedContainer=mgrPg;
+  }
+  try{ if(typeof renderFn==='function') renderFn(); }
+  catch(e){ console.error('showSharedMgrPage',page,e); }
+}
+// Admin/Co-Admin render through the real ap-* page; clear scope so $shared
+// falls back to the (correct, only-visible) admin element.
+function clearSharedScope(){ _sharedContainer=null; }
+
 function initRevenuePage(containerId){
   const cont=document.getElementById(containerId)||getRevContainer();
   // Populate branch select (scoped to this page's own copy)
