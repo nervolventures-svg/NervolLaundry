@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// ──────────────────────────────────────────────────────────────────────────
+// Nervol Laundry — Firestore Security Rules (v5a)
+//
+// IMPORTANT SECURITY NOTE
+// The app authenticates users with in-app PINs, NOT Firebase Auth, so
+// `request.auth` is null on every request. That means these rules cannot
+// gate by user/role yet — they allow access to the specific collections the
+// app uses and deny everything else. Anyone who obtains the public Firebase
+// config (it ships in the page source) can read/write these collections.
+//
+// This matches how the app currently works and unblocks the
+// "Missing or insufficient permissions" error, but it is NOT secure for
+// production. To lock this down properly, migrate login to Firebase
+// Anonymous Auth (or custom tokens) and enable App Check, then change the
+// `if true` guards to `if request.auth != null` (plus App Check enforcement).
+// ──────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Core operational data — management app reads/writes; order tracking reads orders
+    match /orders/{id}        { allow read, write: if true; }
+    match /customers/{id}     { allow read, write: if true; }
+    match /expenditures/{id}  { allow read, write: if true; }
+    match /revenues/{id}      { allow read, write: if true; }
+    match /shifts/{id}        { allow read, write: if true; }
+
+    // Settings doc holds: config (pricing, loyalty, promos, complaints array,
+    // deleteRequests, etc.), users, branches, riders, auditLog
+    match /settings/{id}      { allow read, write: if true; }
+
+    // Login audit trail (write on login, query on the Login History page)
+    match /loginLogs/{id}     { allow read, write: if true; }
+
+    // Customer self-service complaints (written by check.html, read by app.html)
+    match /complaints/{id}    { allow read, write: if true; }
+
+    // Deny everything not explicitly listed above
+    match /{document=**}      { allow read, write: if false; }
+  }
+}

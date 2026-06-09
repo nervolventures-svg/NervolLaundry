@@ -4693,7 +4693,7 @@ function showAPage(page,el){
     }
     if(page==='ridertrips'){renderRiderTrips();const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');}
     if(page==='approvals')renderApprovals();
-    if(page==='revenues'){const _rb=document.getElementById('revBranch');if(_rb&&!_rb.options.length)initRevenuePage('ap-revenues');renderRevenues();}
+    if(page==='revenues'){initRevenuePage('ap-revenues');renderRevenues();}
     if(page==='auditlog'){try{renderAuditLog();}catch(e){}}
     if(page==='loginlogs'){renderLoginLogs();}
     if(page==='deletedorders'){renderDeletedOrders();}
@@ -6370,7 +6370,7 @@ function showMgrPage(page, el){
   } else {
     // Activate matching admin page
     const apPg=document.getElementById('ap-'+page);
-    if(apPg&&page!=='quote')apPg.classList.add('active');
+    if(apPg&&page!=='quote'&&page!=='revenues')apPg.classList.add('active');
     if(page==='orders')renderAOrders();
     else if(page==='customers')renderCustomers();
     else if(page==='pricing'){renderPricingPanel();updateExpressMultDisplay();}
@@ -6408,7 +6408,7 @@ function showMgrPage(page, el){
       const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
     }
     else if(page==='approvals')renderApprovals();
-    else if(page==='revenues'){renderRevenuesPage('mgr-revenues');}
+    else if(page==='revenues'){const rp=document.getElementById('mgr-revenues');if(rp)rp.classList.add('active');renderRevenuesPage('mgr-revenues');}
     else if(page==='quote'){const qp=document.getElementById('mgr-quote');if(qp)qp.classList.add('active');renderMgrQuote();}
     else if(page==='supplies')renderSupplies();
   }
@@ -7950,9 +7950,27 @@ function $adm(id){
 // ══════════════════════════════════════════════════════
 // OTHER REVENUE MODULE
 // ══════════════════════════════════════════════════════
+// Returns the currently-visible revenue page element. Because the admin
+// revenue markup is cloned into mgr-/sup- pages, the same ids exist multiple
+// times in the DOM; scope all lookups to the active container.
+function getRevContainer(){
+  const ids=['ap-revenues','mgr-revenues','sup-revenues'];
+  for(const id of ids){
+    const el=document.getElementById(id);
+    if(el&&el.classList.contains('active')) return el;
+  }
+  // Fallback: any revenue page that is visible
+  for(const id of ids){
+    const el=document.getElementById(id);
+    if(el&&el.offsetParent!==null) return el;
+  }
+  return document.getElementById('ap-revenues')||document;
+}
+function $rev(id){const c=getRevContainer();return (c&&c.querySelector('#'+id))||document.getElementById(id);}
 function initRevenuePage(containerId){
-  // Populate branch select
-  const br=document.getElementById('revBranch')||document.querySelector('#'+containerId+' #revBranch');
+  const cont=document.getElementById(containerId)||getRevContainer();
+  // Populate branch select (scoped to this page's own copy)
+  const br=(cont&&cont.querySelector('#revBranch'))||document.getElementById('revBranch');
   if(br){
     const canSeeAll=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager'||CU.role==='supervisor');
     const branch=CU?._loginBranch||'all';
@@ -7963,18 +7981,18 @@ function initRevenuePage(containerId){
     }
   }
   // Set today's date
-  const dt=document.getElementById('revDate')||document.querySelector('#'+containerId+' #revDate');
+  const dt=(cont&&cont.querySelector('#revDate'))||document.getElementById('revDate');
   if(dt&&!dt.value) dt.value=new Date().toISOString().split('T')[0];
   renderRevenues();
 }
 
 function logRevenue(){
   if(!CU){showNotif('Not logged in.','err');return;}
-  const branchEl=document.getElementById('revBranch');
-  const typeEl=document.getElementById('revType');
-  const amtEl=document.getElementById('revAmt');
-  const dateEl=document.getElementById('revDate');
-  const commentEl=document.getElementById('revComment');
+  const branchEl=$rev('revBranch');
+  const typeEl=$rev('revType');
+  const amtEl=$rev('revAmt');
+  const dateEl=$rev('revDate');
+  const commentEl=$rev('revComment');
   const branch=branchEl?.value||CU._loginBranch||'all';
   const type=typeEl?.value||'Other';
   const amt=parseFloat(amtEl?.value||0);
@@ -8004,13 +8022,14 @@ function logRevenue(){
 }
 
 function renderRevenues(){
-  const tbody=document.getElementById('revBody');if(!tbody)return;
+  const cont=getRevContainer();
+  const tbody=(cont&&cont.querySelector('#revBody'))||document.getElementById('revBody');if(!tbody)return;
   const revs=(DB.revenues||[]);
   // Summary
   const total=revs.reduce((s,r)=>s+r.amount,0);
   const thisMonth=revs.filter(r=>r.createdAt&&r.createdAt.slice(0,7)===new Date().toISOString().slice(0,7));
   const monthTotal=thisMonth.reduce((s,r)=>s+r.amount,0);
-  const sumEl=document.getElementById('revSummary');
+  const sumEl=(cont&&cont.querySelector('#revSummary'))||document.getElementById('revSummary');
   if(sumEl) sumEl.innerHTML=
     '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
     +'<div class="stat-card" style="padding:7px 14px;text-align:center;">'
