@@ -429,8 +429,13 @@ body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-
   }
   .mob-menu-btn:hover{background:var(--surface);}
 
-  /* Mobile bottom nav for admin */
-  #adminBottomNav{display:flex;}
+  /* Mobile bottom nav for admin only (manager/supervisor/staff use the slide-in sidebar/tab strip) */
+  #adminBottomNav{display:none;}
+  #adminApp.active ~ #adminBottomNav{display:flex;}
+  /* Lift toast above the admin bottom nav in the 600-900px range */
+  .notif{bottom:80px;}
+  /* Keep the PWA install banner clear of the admin bottom nav (60px tall) */
+  #adminApp.active ~ #installBanner{bottom:60px !important;}
 
   /* Order layout stacks, ticket preview hidden on mobile */
   .order-layout{grid-template-columns:1fr;}
@@ -3221,9 +3226,13 @@ function showSyncStatus(msg){
   if(!el){
     el = document.createElement('div');
     el.id = 'syncStatus';
-    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a6b3c;color:#fff;text-align:center;padding:6px;font-size:.78rem;font-family:"DM Sans",sans-serif;font-weight:600;letter-spacing:.5px;';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99997;background:#1a6b3c;color:#fff;text-align:center;padding:6px;font-size:.78rem;font-family:"DM Sans",sans-serif;font-weight:600;letter-spacing:.5px;';
     document.body.appendChild(el);
   }
+  // If the offline banner is visible, stack the sync indicator just below it.
+  const ob=document.getElementById('offlineBanner');
+  const obVisible=ob&&ob.style.display!=='none'&&ob.offsetParent!==null;
+  el.style.top = obVisible ? (ob.offsetHeight||32)+'px' : '0';
   el.textContent = '🔄 ' + msg;
   el.style.display = 'block';
 }
@@ -9222,30 +9231,7 @@ document.addEventListener('click',e=>{
 });
 </script>
 
-<!-- ADMIN MOBILE BOTTOM NAV -->
-<div id="adminBottomNav">
-  <div class="abn-row">
-    <button class="abn-item active" onclick="adminMobileNav('dashboard',this)"><span class="abn-ic">📊</span>Dash</button>
-    <button class="abn-item" onclick="adminMobileNav('orders',this)"><span class="abn-ic">📋</span>Orders</button>
-    <button class="abn-item" onclick="adminMobileNav('customers',this)"><span class="abn-ic">👤</span>Customers</button>
-    <button class="abn-item" onclick="adminMobileNav('pricing',this)"><span class="abn-ic">💰</span>Pricing</button>
-    <button class="abn-item" id="moreBtn" onclick="toggleMorePanel()"><span class="abn-ic">⋯</span>More</button>
-  </div>
-</div>
-<div class="abn-more" id="abnMorePanel">
-  <div class="abn-more-item" onclick="adminMobileNav('expenditure')"><span style="font-size:1.2rem">💸</span>Expenses</div>
-  <div class="abn-more-item" onclick="adminMobileNav('reports')"><span style="font-size:1.2rem">📈</span>Reports</div>
-  <div class="abn-more-item" onclick="adminMobileNav('debttracker')"><span style="font-size:1.2rem">💳</span>Debts</div>
-  <div class="abn-more-item" onclick="adminMobileNav('promos')"><span style="font-size:1.2rem">🎟️</span>Promos</div>
-  <div class="abn-more-item" onclick="adminMobileNav('pettycash')"><span style="font-size:1.2rem">🪙</span>Petty Cash</div>
-  <div class="abn-more-item" onclick="adminMobileNav('float')"><span style="font-size:1.2rem">💵</span>Float</div>
-  <div class="abn-more-item" onclick="adminMobileNav('complaints')"><span style="font-size:1.2rem">⚠️</span>Complaints</div>
-  <div class="abn-more-item" onclick="adminMobileNav('ridertrips')"><span style="font-size:1.2rem">🛵</span>Trips</div>
-  <div class="abn-more-item" onclick="adminMobileNav('approvals')"><span style="font-size:1.2rem">✅</span>Approvals</div>
-  <div class="abn-more-item" onclick="adminMobileNav('riders')"><span style="font-size:1.2rem">🏍️</span>Riders</div>
-  <div class="abn-more-item" onclick="adminMobileNav('branches')"><span style="font-size:1.2rem">🏪</span>Branches</div>
-  <div class="abn-more-item" onclick="adminMobileNav('staff')"><span style="font-size:1.2rem">👥</span>Staff</div>
-</div>
+<!-- (duplicate ADMIN MOBILE BOTTOM NAV removed — see the primary #adminBottomNav above) -->
 
 <!-- EDIT CUSTOMER MODAL -->
 <div class="modal-ov" id="editCustModal" style="display:none;">
