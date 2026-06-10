@@ -3198,6 +3198,10 @@ function attachRealtimeListeners(){
       if(document.getElementById('adminApp').classList.contains('active')){
         renderExpBody(); renderDashboard();
       }
+      if(document.getElementById('managerApp').classList.contains('active')){
+        try{ if(document.getElementById('mgr-expenditure').classList.contains('active')) renderExpBody(); }catch(e){}
+        try{ if(document.getElementById('mgr-dashboard').classList.contains('active')) renderMgrDashboard(); }catch(e){}
+      }
     },
     err => console.error('Expenditures listener:', err)
   );
@@ -4680,8 +4684,8 @@ function showAPage(page,el){
     }
     if(page==='debttracker')renderDebtTracker();
     if(page==='promos'){renderPromos();renderGlobalDiscountStatus();}
-    if(page==='pettycash'){renderPettyCash();const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
-    if(page==='float'){renderFloat();const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
+    if(page==='pettycash'){renderPettyCash();const d=$shared('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const pb=$shared('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
+    if(page==='float'){renderFloat();const d=$shared('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const fb=$shared('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');}
     if(page==='turnaround'){const today=new Date().toISOString().split('T')[0];const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}if(to&&!to.value)to.value=today;renderTurnaround();}
     if(page==='pricing'){try{renderPricingPanel();}catch(e){}}
     if(page==='expenditure'){try{
@@ -4700,7 +4704,7 @@ function showAPage(page,el){
       const cb=document.getElementById('adm-comp-branch');
       if(cb)cb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
     }
-    if(page==='ridertrips'){renderRiderTrips();const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');}
+    if(page==='ridertrips'){renderRiderTrips();const d=$shared('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];const rb=$shared('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');const rr=$shared('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');}
     if(page==='approvals')renderApprovals();
     if(page==='revenues'){initRevenuePage('ap-revenues');renderRevenues();}
     if(page==='auditlog'){try{renderAuditLog();}catch(e){}}
@@ -5158,16 +5162,16 @@ function addBDItem(){
 
 // ── EXPENDITURE ──
 function logExp(){
-  const cat=document.getElementById('expCat').value,desc=document.getElementById('expDesc').value.trim();
-  const amt=parseFloat(document.getElementById('expAmt').value),date=document.getElementById('expDate').value;
-  const branchId=document.getElementById('expBranch').value;
+  const cat=$shared('expCat').value,desc=$shared('expDesc').value.trim();
+  const amt=parseFloat($shared('expAmt').value),date=$shared('expDate').value;
+  const branchId=$shared('expBranch').value;
   if(!desc){showNotif('Enter description.','err');return;}
   if(!amt||amt<=0){showNotif('Enter valid amount.','err');return;}
   if(!date){showNotif('Select date.','err');return;}
   const aExp={id:'exp'+Date.now(),branchId,cat,desc,amount:amt,date,loggedBy:CU.name,createdAt:new Date().toISOString()};
   DB.expenditures.unshift(aExp);
   saveExpenditure(aExp);renderExpBody();renderDashboard();
-  document.getElementById('expDesc').value='';document.getElementById('expAmt').value='';
+  $shared('expDesc').value='';$shared('expAmt').value='';
   showNotif('Expense logged!','ok');
 }
 function renderExpBody(){
@@ -6377,46 +6381,47 @@ function showMgrPage(page, el){
     const pg=document.getElementById('mgr-staff');if(pg)pg.classList.add('active');
     renderMgrStaff();
   } else {
-    // Activate matching admin page
-    const apPg=document.getElementById('ap-'+page);
-    if(apPg&&page!=='quote'&&page!=='revenues'&&page!=='orders'&&page!=='customers')apPg.classList.add('active');
+    // Shared admin pages: clone into the manager container, scope, then render.
+    // _sharedContainer (set by showSharedMgrPage) makes $shared() resolve ids
+    // within the manager's own copy instead of the hidden admin copy.
+    const branchOpts=()=>DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+    const today=()=>new Date().toISOString().split('T')[0];
     if(page==='orders')showSharedMgrPage('orders',renderAOrders);
     else if(page==='customers')showSharedMgrPage('customers',renderCustomers);
-    else if(page==='pricing'){renderPricingPanel();updateExpressMultDisplay();}
-    else if(page==='expenditure'){
-      const expB=document.getElementById('expBranch');
-      if(expB&&!expB.options.length) expB.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+    else if(page==='pricing')showSharedMgrPage('pricing',()=>{renderPricingPanel();updateExpressMultDisplay();});
+    else if(page==='expenditure')showSharedMgrPage('expenditure',()=>{
+      const expB=$shared('expBranch');
+      if(expB&&!expB.options.length) expB.innerHTML=branchOpts();
       try{renderExpBody();}catch(e){}
-    }
-    else if(page==='reports'){try{renderReports();}catch(e){}}
-    else if(page==='analytics'){try{initAnalyticsFilters();renderAnalytics();}catch(e){}}
-    else if(page==='debttracker')renderDebtTracker();
-    else if(page==='promos'){renderPromos();renderGlobalDiscountStatus();}
-    else if(page==='pettycash'){
+    });
+    else if(page==='reports')showSharedMgrPage('reports',()=>{try{renderReports();}catch(e){}});
+    else if(page==='analytics')showSharedMgrPage('analytics',()=>{try{initAnalyticsFilters();renderAnalytics();}catch(e){}});
+    else if(page==='debttracker')showSharedMgrPage('debttracker',renderDebtTracker);
+    else if(page==='promos')showSharedMgrPage('promos',()=>{renderPromos();renderGlobalDiscountStatus();});
+    else if(page==='pettycash')showSharedMgrPage('pettycash',()=>{
       renderPettyCash();
-      const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-      const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-    }
-    else if(page==='float'){
+      const d=$shared('pc-date');if(d&&!d.value)d.value=today();
+      const pb=$shared('pc-branch');if(pb)pb.innerHTML=branchOpts();
+    });
+    else if(page==='float')showSharedMgrPage('float',()=>{
       renderFloat();
-      const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-      const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-    }
-    else if(page==='turnaround'){
-      const today=new Date().toISOString().split('T')[0];
-      const from=document.getElementById('tat-from');const to=document.getElementById('tat-to');
+      const d=$shared('fl-date');if(d&&!d.value)d.value=today();
+      const fb=$shared('fl-branch');if(fb)fb.innerHTML=branchOpts();
+    });
+    else if(page==='turnaround')showSharedMgrPage('turnaround',()=>{
+      const from=$shared('tat-from');const to=$shared('tat-to');
       if(from&&!from.value){const d=new Date();d.setDate(d.getDate()-7);from.value=d.toISOString().split('T')[0];}
-      if(to&&!to.value)to.value=today;
+      if(to&&!to.value)to.value=today();
       renderTurnaround();
-    }
-    else if(page==='complaints')openComplaintsPage();
-    else if(page==='ridertrips'){
+    });
+    else if(page==='complaints')showSharedMgrPage('complaints',openComplaintsPage);
+    else if(page==='ridertrips')showSharedMgrPage('ridertrips',()=>{
       renderRiderTrips();
-      const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-      const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-      const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
-    }
-    else if(page==='approvals')renderApprovals();
+      const d=$shared('rt-date');if(d&&!d.value)d.value=today();
+      const rb=$shared('rt-branch');if(rb)rb.innerHTML=branchOpts();
+      const rr=$shared('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+    });
+    else if(page==='approvals')showSharedMgrPage('approvals',renderApprovals);
     else if(page==='revenues'){const rp=document.getElementById('mgr-revenues');if(rp)rp.classList.add('active');renderRevenuesPage('mgr-revenues');}
     else if(page==='quote'){const qp=document.getElementById('mgr-quote');if(qp)qp.classList.add('active');renderMgrQuote();}
     else if(page==='supplies')renderSupplies();
@@ -6562,8 +6567,8 @@ function renderMgrPettyCash(){
   const pg=document.getElementById('mgr-pettycash');if(!pg)return;
   pg.innerHTML=document.getElementById('ap-pettycash')?.innerHTML||'';
   renderPettyCash();
-  const d=document.getElementById('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-  const pb=document.getElementById('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  const d=$shared('pc-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+  const pb=$shared('pc-branch');if(pb)pb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
 }
 
 // ─── MGR FLOAT ───────────────────────────────────────
@@ -6571,8 +6576,8 @@ function renderMgrFloat(){
   const pg=document.getElementById('mgr-float');if(!pg)return;
   pg.innerHTML=document.getElementById('ap-float')?.innerHTML||'';
   renderFloat();
-  const d=document.getElementById('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-  const fb=document.getElementById('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  const d=$shared('fl-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+  const fb=$shared('fl-branch');if(fb)fb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
 }
 
 // ─── MGR TURNAROUND ──────────────────────────────────
@@ -6650,9 +6655,9 @@ function renderMgrRiderTrips(){
   const pg=document.getElementById('mgr-ridertrips');if(!pg)return;
   pg.innerHTML=document.getElementById('ap-ridertrips')?.innerHTML||'';
   renderRiderTrips();
-  const d=document.getElementById('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
-  const rb=document.getElementById('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
-  const rr=document.getElementById('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+  const d=$shared('rt-date');if(d&&!d.value)d.value=new Date().toISOString().split('T')[0];
+  const rb=$shared('rt-branch');if(rb)rb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  const rr=$shared('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
 }
 
 // ─── MGR APPROVALS (CAN APPROVE/DENY) ────────────────
@@ -8586,11 +8591,11 @@ function applyPromo(){
   liveCalc();
 }
 function createPromo(){
-  const code=(document.getElementById('promo-code')?.value||'').trim().toUpperCase();
-  const pct=parseFloat(document.getElementById('promo-pct')?.value)||0;
-  const exp=document.getElementById('promo-exp')?.value;
-  const max=parseInt(document.getElementById('promo-max')?.value)||0;
-  const desc=(document.getElementById('promo-desc')?.value||'').trim();
+  const code=($shared('promo-code')?.value||'').trim().toUpperCase();
+  const pct=parseFloat($shared('promo-pct')?.value)||0;
+  const exp=$shared('promo-exp')?.value;
+  const max=parseInt($shared('promo-max')?.value)||0;
+  const desc=($shared('promo-desc')?.value||'').trim();
   if(!code){showNotif('Enter a promo code.','err');return;}
   if(!pct){showNotif('Enter a discount %.','err');return;}
   if(!exp){showNotif('Set an expiry date.','err');return;}
@@ -8599,8 +8604,8 @@ function createPromo(){
   saveSettings();
   renderPromos();
   // Clear form
-  const codeEl=document.getElementById('promo-code');if(codeEl)codeEl.value='';
-  const descEl=document.getElementById('promo-desc');if(descEl)descEl.value='';
+  const codeEl=$shared('promo-code');if(codeEl)codeEl.value='';
+  const descEl=$shared('promo-desc');if(descEl)descEl.value='';
   showNotif('Promo '+code+' created!','ok');
 }
 function renderPromos(){
@@ -8671,14 +8676,14 @@ function renderDebtTracker(){
 // ══════════════════════════════════════════════════════
 function logPettyCash(){
   if(!CU){showNotif('Not logged in.','err');return;}
-  const branch=document.getElementById('pc-branch')?.value;
-  const amt=parseFloat(document.getElementById('pc-amt')?.value)||0;
-  const purpose=(document.getElementById('pc-purpose')?.value||'').trim();
-  const date=document.getElementById('pc-date')?.value||new Date().toISOString().split('T')[0];
+  const branch=$shared('pc-branch')?.value;
+  const amt=parseFloat($shared('pc-amt')?.value)||0;
+  const purpose=($shared('pc-purpose')?.value||'').trim();
+  const date=$shared('pc-date')?.value||new Date().toISOString().split('T')[0];
   if(!purpose||!amt){showNotif('Enter purpose and amount.','err');return;}
   DB.pettyCash.push({id:'pc'+Date.now(),branchId:branch,amount:amt,purpose,date,loggedBy:CU.name,createdAt:new Date().toISOString()});
   saveSettings();renderPettyCash();showNotif('Logged!','ok');
-  document.getElementById('pc-amt').value='';document.getElementById('pc-purpose').value='';
+  $shared('pc-amt').value='';$shared('pc-purpose').value='';
 }
 function renderPettyCash(){
   const tbody=document.getElementById('pcBody');if(!tbody)return;
@@ -8700,15 +8705,15 @@ function delPettyCash(id){DB.pettyCash=DB.pettyCash.filter(e=>e.id!==id);saveSet
 // ══════════════════════════════════════════════════════
 function setFloat(){
   if(!CU){showNotif('Not logged in.','err');return;}
-  const branch=document.getElementById('fl-branch')?.value;
-  const amt=parseFloat(document.getElementById('fl-amt')?.value)||0;
-  const date=document.getElementById('fl-date')?.value||new Date().toISOString().split('T')[0];
+  const branch=$shared('fl-branch')?.value;
+  const amt=parseFloat($shared('fl-amt')?.value)||0;
+  const date=$shared('fl-date')?.value||new Date().toISOString().split('T')[0];
   if(!amt){showNotif('Enter float amount.','err');return;}
   const cashIn=DB.orders.filter(o=>o.branchId===branch&&new Date(o.createdAt).toDateString()===new Date(date+'T00:00:00').toDateString()&&(o.payStatus==='paid'||o.payStatus==='momo')).reduce((s,o)=>s+o.total,0);
   const variance=cashIn-amt;
   DB.floats.push({id:'fl'+Date.now(),branchId:branch,floatAmt:amt,cashIn,variance,date,setBy:CU.name,createdAt:new Date().toISOString()});
   saveSettings();renderFloat();showNotif('Float set!','ok');
-  document.getElementById('fl-amt').value='';
+  $shared('fl-amt').value='';
 }
 function renderFloat(){
   const tbody=document.getElementById('floatBody');if(!tbody)return;
@@ -8883,16 +8888,16 @@ function removeComplaintDoc(id){
 // ══════════════════════════════════════════════════════
 function logRiderTrip(){
   if(!CU){showNotif('Not logged in.','err');return;}
-  const riderId=document.getElementById('rt-rider')?.value;
-  const orderId=(document.getElementById('rt-order')?.value||'').trim();
-  const branchId=document.getElementById('rt-branch')?.value;
-  const fee=parseFloat(document.getElementById('rt-fee')?.value)||0;
-  const date=document.getElementById('rt-date')?.value||new Date().toISOString().split('T')[0];
+  const riderId=$shared('rt-rider')?.value;
+  const orderId=($shared('rt-order')?.value||'').trim();
+  const branchId=$shared('rt-branch')?.value;
+  const fee=parseFloat($shared('rt-fee')?.value)||0;
+  const date=$shared('rt-date')?.value||new Date().toISOString().split('T')[0];
   if(!riderId){showNotif('Select a rider.','err');return;}
   const rider=DB.riders.find(r=>r.id===riderId);
   DB.riderTrips.push({id:'rt'+Date.now(),riderId,riderName:rider?.name||riderId,orderId,branchId,fee,date,loggedBy:CU.name,createdAt:new Date().toISOString()});
   saveSettings();renderRiderTrips();showNotif('Trip logged!','ok');
-  document.getElementById('rt-order').value='';document.getElementById('rt-fee').value='';
+  $shared('rt-order').value='';$shared('rt-fee').value='';
 }
 function renderRiderTrips(){
   const tbody=document.getElementById('rtBody');if(!tbody)return;
