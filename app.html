@@ -5939,9 +5939,9 @@ function selectAdminCust(id){
   selCust=c;
   const sel=$adm('adminCustSelected');
   if(sel)sel.style.display='flex';
-  const nm=document.getElementById('adminCustName');
+  const nm=$adm('adminCustName');
   if(nm)nm.textContent=c.name;
-  const mt=document.getElementById('adminCustMeta');
+  const mt=$adm('adminCustMeta');
   if(mt)mt.textContent=c.phone+(c.address?' · '+c.address:'');
   const srch=$adm('adminCustSearch');
   if(srch)srch.value='';
@@ -6063,14 +6063,14 @@ function renderGlobalDiscountStatus(){
 
 
 function adminQuickCreateCust(){
-  const name=(document.getElementById('adminNewCustName')?.value||'').trim();
-  const phone=(document.getElementById('adminNewCustPhone')?.value||'').trim();
+  const name=($adm('adminNewCustName')?.value||'').trim();
+  const phone=($adm('adminNewCustPhone')?.value||'').trim();
   if(!name){showNotif('Enter customer name.','err');return;}
   const c={id:'c'+Date.now(),name,phone,address:'',totalOrders:0,totalSpent:0,createdAt:new Date().toISOString()};
   DB.customers.push(c);saveCustomer(c);
   selectAdminCust(c.id);
-  document.getElementById('adminNewCustName').value='';
-  document.getElementById('adminNewCustPhone').value='';
+  const n1=$adm('adminNewCustName');if(n1)n1.value='';
+  const n2=$adm('adminNewCustPhone');if(n2)n2.value='';
   showNotif('Customer created!','ok');
 }
 
@@ -6403,7 +6403,7 @@ function showMgrPage(page, el){
       if(expB&&!expB.options.length) expB.innerHTML=branchOpts();
       try{renderExpBody();}catch(e){}
     });
-    else if(page==='reports')showSharedMgrPage('reports',()=>{try{renderReports();}catch(e){}});
+    else if(page==='reports')showSharedMgrPage('reports',()=>{});
     else if(page==='analytics')showSharedMgrPage('analytics',()=>{try{initAnalyticsFilters();renderAnalytics();}catch(e){}});
     else if(page==='debttracker')showSharedMgrPage('debttracker',renderDebtTracker);
     else if(page==='promos')showSharedMgrPage('promos',()=>{renderPromos();renderGlobalDiscountStatus();});
@@ -6431,9 +6431,9 @@ function showMgrPage(page, el){
       const rr=$shared('rt-rider');if(rr)rr.innerHTML=DB.riders.filter(r=>r.active).map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
     });
     else if(page==='approvals')showSharedMgrPage('approvals',renderApprovals);
-    else if(page==='revenues'){const rp=document.getElementById('mgr-revenues');if(rp)rp.classList.add('active');renderRevenuesPage('mgr-revenues');}
-    else if(page==='quote'){const qp=document.getElementById('mgr-quote');if(qp)qp.classList.add('active');renderMgrQuote();}
-    else if(page==='supplies')renderSupplies();
+    else if(page==='revenues'){clearSharedScope();const rp=document.getElementById('mgr-revenues');if(rp)rp.classList.add('active');renderRevenuesPage('mgr-revenues');}
+    else if(page==='quote'){clearSharedScope();const qp=document.getElementById('mgr-quote');if(qp)qp.classList.add('active');renderMgrQuote();}
+    else if(page==='supplies'){clearSharedScope();renderSupplies();}
   }
 }
 
@@ -6553,8 +6553,8 @@ function renderMgrExp(){
 // ─── MGR REPORTS ─────────────────────────────────────
 function renderMgrReports(){
   const pg=document.getElementById('mgr-reports');if(!pg)return;
-  pg.innerHTML=document.getElementById('ap-reports')?.innerHTML||'';
-  try{renderReports();}catch(e){}
+  if(!pg.innerHTML.trim()) pg.innerHTML=document.getElementById('ap-reports')?.innerHTML||'';
+  // Reports run on the user clicking the Generate button (genReport()); nothing to auto-render.
 }
 
 // ─── MGR DEBT TRACKER ────────────────────────────────
@@ -8023,10 +8023,34 @@ function showSharedMgrPage(page, renderFn){
 // falls back to the (correct, only-visible) admin element.
 function clearSharedScope(){ _sharedContainer=null; }
 
+// Find the copy of a (possibly duplicated) element id that is actually on
+// screen: inside the active app container AND an active page. Robust across
+// all the clone mechanisms (showSharedMgrPage, renderRevenuesPage,
+// renderMgrNewOrder, renderSupNewOrder) because it keys off what's visible,
+// not off a manually-set scope pointer.
+function visibleEl(id){
+  const apps=['adminApp','managerApp','supervisorApp','staffApp'];
+  let activeApp=null;
+  for(const a of apps){const el=document.getElementById(a);if(el&&el.classList.contains('active')){activeApp=el;break;}}
+  if(activeApp){
+    // Prefer an instance inside an active page within the active app
+    const active=activeApp.querySelectorAll('.a-page.active #'+id+', .s-page.active #'+id);
+    for(const el of active){ if(el.offsetParent!==null) return el; }
+    // Otherwise any instance in the active app that is visible
+    const any=activeApp.querySelectorAll('#'+id);
+    for(const el of any){ if(el.offsetParent!==null) return el; }
+    if(any.length) return any[0];
+  }
+  // Fallback: any visible instance anywhere, else getElementById
+  const all=document.querySelectorAll('#'+id);
+  for(const el of all){ if(el.offsetParent!==null) return el; }
+  return document.getElementById(id);
+}
+
 function initRevenuePage(containerId){
   const cont=document.getElementById(containerId)||getRevContainer();
-  // Populate branch select (scoped to this page's own copy)
-  const br=(cont&&cont.querySelector('#revBranch'))||document.getElementById('revBranch');
+  // Populate branch select (scoped to the visible page's own copy)
+  const br=visibleEl('revBranch');
   if(br){
     const canSeeAll=CU&&(CU.role==='admin'||CU.role==='coadmin'||CU.role==='manager'||CU.role==='supervisor');
     const branch=CU?._loginBranch||'all';
@@ -8037,18 +8061,25 @@ function initRevenuePage(containerId){
     }
   }
   // Set today's date
-  const dt=(cont&&cont.querySelector('#revDate'))||document.getElementById('revDate');
+  const dt=visibleEl('revDate');
   if(dt&&!dt.value) dt.value=new Date().toISOString().split('T')[0];
   renderRevenues();
 }
 
 function logRevenue(){
   if(!CU){showNotif('Not logged in.','err');return;}
-  const branchEl=$rev('revBranch');
-  const typeEl=$rev('revType');
-  const amtEl=$rev('revAmt');
-  const dateEl=$rev('revDate');
-  const commentEl=$rev('revComment');
+  const branchEl=visibleEl('revBranch');
+  const typeEl=visibleEl('revType');
+  const amtEl=visibleEl('revAmt');
+  const dateEl=visibleEl('revDate');
+  const commentEl=visibleEl('revComment');
+  // TEMP DIAGNOSTIC — remove once confirmed working
+  console.log('[logRevenue] elements found:', {
+    branch: !!branchEl, type: !!typeEl, amt: !!amtEl, date: !!dateEl, comment: !!commentEl,
+    branchVal: branchEl?.value, amtVal: amtEl?.value, commentVal: commentEl?.value,
+    activeApp: ['adminApp','managerApp','supervisorApp','staffApp'].find(a=>document.getElementById(a)?.classList.contains('active')),
+    revPagesActive: ['ap-revenues','mgr-revenues','sup-revenues'].filter(id=>document.getElementById(id)?.classList.contains('active'))
+  });
   const branch=branchEl?.value||CU._loginBranch||'all';
   const type=typeEl?.value||'Other';
   const amt=parseFloat(amtEl?.value||0);
@@ -8078,14 +8109,13 @@ function logRevenue(){
 }
 
 function renderRevenues(){
-  const cont=getRevContainer();
-  const tbody=(cont&&cont.querySelector('#revBody'))||document.getElementById('revBody');if(!tbody)return;
+  const tbody=visibleEl('revBody');if(!tbody)return;
   const revs=(DB.revenues||[]);
   // Summary
   const total=revs.reduce((s,r)=>s+r.amount,0);
   const thisMonth=revs.filter(r=>r.createdAt&&r.createdAt.slice(0,7)===new Date().toISOString().slice(0,7));
   const monthTotal=thisMonth.reduce((s,r)=>s+r.amount,0);
-  const sumEl=(cont&&cont.querySelector('#revSummary'))||document.getElementById('revSummary');
+  const sumEl=visibleEl('revSummary');
   if(sumEl) sumEl.innerHTML=
     '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
     +'<div class="stat-card" style="padding:7px 14px;text-align:center;">'
