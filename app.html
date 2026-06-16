@@ -6941,11 +6941,11 @@ function updateExpressMultDisplay(){
 
 function adminLogComplaint(){
   if(!CU){showNotif('Not logged in.','err');return;}
-  const orderId=(document.getElementById('adm-comp-order')?.value||'').trim();
-  const type=document.getElementById('adm-comp-type')?.value||'other';
-  const cust=(document.getElementById('adm-comp-cust')?.value||'').trim();
-  const branchId=document.getElementById('adm-comp-branch')?.value||DB.branches[0]?.id||'';
-  const desc=(document.getElementById('adm-comp-desc')?.value||'').trim();
+  const orderId=(visibleEl('adm-comp-order')?.value||'').trim();
+  const type=visibleEl('adm-comp-type')?.value||'other';
+  const cust=(visibleEl('adm-comp-cust')?.value||'').trim();
+  const branchId=visibleEl('adm-comp-branch')?.value||DB.branches[0]?.id||'';
+  const desc=(visibleEl('adm-comp-desc')?.value||'').trim();
   if(!desc){showNotif('Enter a description.','err');return;}
   if(!DB.complaints)DB.complaints=[];
   DB.complaints.push({
@@ -6954,7 +6954,7 @@ function adminLogComplaint(){
     status:'open',createdAt:new Date().toISOString()
   });
   saveSettings();renderAdminComplaints();
-  ['adm-comp-order','adm-comp-cust','adm-comp-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['adm-comp-order','adm-comp-cust','adm-comp-desc'].forEach(id=>{const el=visibleEl(id);if(el)el.value='';});
   showNotif('Complaint logged.','ok');
 }
 
@@ -8073,13 +8073,6 @@ function logRevenue(){
   const amtEl=visibleEl('revAmt');
   const dateEl=visibleEl('revDate');
   const commentEl=visibleEl('revComment');
-  // TEMP DIAGNOSTIC — remove once confirmed working
-  console.log('[logRevenue] elements found:', {
-    branch: !!branchEl, type: !!typeEl, amt: !!amtEl, date: !!dateEl, comment: !!commentEl,
-    branchVal: branchEl?.value, amtVal: amtEl?.value, commentVal: commentEl?.value,
-    activeApp: ['adminApp','managerApp','supervisorApp','staffApp'].find(a=>document.getElementById(a)?.classList.contains('active')),
-    revPagesActive: ['ap-revenues','mgr-revenues','sup-revenues'].filter(id=>document.getElementById(id)?.classList.contains('active'))
-  });
   const branch=branchEl?.value||CU._loginBranch||'all';
   const type=typeEl?.value||'Other';
   const amt=parseFloat(amtEl?.value||0);
@@ -8886,11 +8879,17 @@ async function fetchPortalComplaints(){
 // (from cached DB.complaints), then fetch portal complaints and re-render
 // if any new ones arrived.
 function openComplaintsPage(){
+  // Populate the branch select on the visible complaints form
+  const cb=visibleEl('adm-comp-branch');
+  if(cb&&!cb.options.length){
+    cb.innerHTML=DB.branches.filter(b=>b.active).map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');
+  }
+  // Also refresh the complaint type select isn't needed (static options)
   renderAdminComplaints();
   fetchPortalComplaints().then(changed=>{if(changed)renderAdminComplaints();});
 }
 function renderAdminComplaints(){
-  const tbody=document.getElementById('aCompBody');if(!tbody)return;
+  const tbody=visibleEl('aCompBody');if(!tbody)return;
   let list=DB.complaints.filter(c=>compFilter==='all'||c.status===compFilter);
   const _compGetters={date:c=>c.createdAt,customer:c=>c.customerName,type:c=>c.type,branch:c=>c.branchId,status:c=>c.status};
   list=sortData(list,'aCompBody',_compGetters);
